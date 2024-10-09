@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "499744196132",
+    "project_id": "tournament-manager-d7665",
+    "storage_bucket": "tournament-manager-d7665.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:499744196132:android:f0a15cf24ed0b2675d3ab1",
+        "android_client_info": {
+          "package_name": "com.koii.tournamentmanager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASZ5H-1id4Y1EXxD0aFIXEeG34uHkf3zg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
