@@ -1,187 +1,315 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
-  TextInput,
-  Button,
+  StyleSheet,
   FlatList,
-  Alert,
+  TouchableOpacity,
   Image,
+  Alert,
+  TextInput,
   Modal,
 } from "react-native";
 import { useStore } from "../store/store";
-import { useAuthStore } from "../store/authStore";
 import ImagePicker from "react-native-image-crop-picker";
+import { Card } from "react-native-elements";
+import Icon from "react-native-vector-icons/MaterialIcons";
+import { useAuthStore } from "../store/authStore";
 
-interface User {
-  id: string;
-  role: string;
-  name: string;
-  teamId?: string;
-  stats: any;
-  email: string;
-}
-
-interface Team {
-  id: string;
-  teamName: string;
-  players: string[];
-  coachId: string;
-  schedule: any;
-  avatar?: string;
-}
-
-const CoachDashboard = () => {
-  const {
-    users,
-    teams,
-    fetchUsers,
-    addTeam,
-    updateTeam,
-    fetchTeamsSpecifiedCoachId,
-  } = useStore();
-  const { user } = useAuthStore();
-  const [teamName, setTeamName] = useState("");
-  const [playerEmail, setPlayerEmail] = useState("");
+const CoachDashboard = ({ navigation }) => {
+  const { teams, fetchTeamsSpecifiedCoachId, addTeam, uploadTeamImages } =
+    useStore();
+  const coachId = useAuthStore((state) => state.user?.email);
+  // console.log(useAuthStore((state) => state.user));
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [teamAvatar, setTeamAvatar] = useState("");
+  const [newTeamName, setNewTeamName] = useState("");
+  const [newTeamLogo, setNewTeamLogo] = useState(null);
+  const [newTeamBanner, setNewTeamBanner] = useState(null);
 
-  const pickImage = async () => {
+  useEffect(() => {
+    fetchTeamsSpecifiedCoachId(coachId);
+  }, [coachId, fetchTeamsSpecifiedCoachId]);
+
+  const pickImage = useCallback(async (type) => {
     try {
       const image = await ImagePicker.openPicker({
         width: 300,
         height: 300,
         cropping: true,
+        mediaType: "photo",
       });
-      setTeamAvatar(image.path);
+      if (type === "logo") {
+        setNewTeamLogo(image);
+      } else {
+        setNewTeamBanner(image);
+      }
     } catch (error) {
-      console.error("ImagePicker error:", error);
-      Alert.alert("Error", "Failed to pick image");
-    }
-  };
-
-  useEffect(() => {
-    fetchUsers();
-    if (user) {
-      // Check if user is defined
-      fetchTeamsSpecifiedCoachId(user.email);
+      console.error("ImagePicker Error:", error);
+      Alert.alert("Error", `Failed to pick ${type} image. Please try again.`);
     }
   }, []);
 
-  const createTeam = async () => {
-    if (teamName.trim() === "") {
+  const handleCreateTeam = useCallback(async () => {
+    if (newTeamName.trim() === "") {
       Alert.alert("Error", "Please enter a team name");
       return;
     }
 
-    const coach = users.find((user) => user.role === "coach");
-    if (!coach) {
-      Alert.alert("Error", "Coach not found");
-      return;
+    try {
+      const newTeam = {
+        teamName: newTeamName,
+        coachId: coachId,
+        players: [],
+        schedule: {},
+      };
+
+      const result = await addTeam(newTeam);
+
+      if (!result || !result.id) {
+        throw new Error("Failed to create team: No ID returned");
+      }
+
+      if (newTeamLogo || newTeamBanner) {
+        await uploadTeamImages(
+          result.id,
+          newTeamLogo?.path,
+          newTeamBanner?.path
+        );
+      }
+
+      setNewTeamName("");
+      setNewTeamLogo(null);
+      setNewTeamBanner(null);
+      setIsModalVisible(false);
+      Alert.alert("Success", "Team created successfully");
+    } catch (error) {
+      console.error("Error creating team:", error);
+      Alert.alert("Error", `Failed to create team: ${error.message}`);
     }
+  }, [
+    newTeamName,
+    coachId,
+    addTeam,
+    uploadTeamImages,
+    newTeamLogo,
+    newTeamBanner,
+  ]);
 
-    await addTeam({
-      teamName,
-      players: [],
-      coachId: coach.id,
-      schedule: {},
-      avatar: teamAvatar || "placeholder_avatar_url",
-    });
-
-    setTeamName("");
-    setTeamAvatar("");
-    setIsModalVisible(false);
-    Alert.alert("Success", "Team created successfully");
-  };
-
-  const invitePlayer = async (teamId: string) => {
-    if (playerEmail.trim() === "") {
-      Alert.alert("Error", "Please enter a player email");
-      return;
-    }
-
-    const player = users.find(
-      (user) => user.role === "player" && user.email === playerEmail
-    );
-    if (!player) {
-      Alert.alert("Error", "Player not found");
-      return;
-    }
-
-    if (player.teamId) {
-      Alert.alert("Error", "This player is already in a team");
-      return;
-    }
-
-    const team = teams.find((t) => t.id === teamId);
-    if (!team) {
-      Alert.alert("Error", "Team not found");
-      return;
-    }
-
-    await updateTeam({
-      ...team,
-      players: [...team.players, player.id],
-    });
-
-    setPlayerEmail("");
-    Alert.alert("Success", "Player invited successfully");
-  };
+  const renderTeamItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.teamItem}
+      onPress={() => navigation.navigate("TeamDetail", { teamId: item.id })}
+    >
+      <Image source={{ uri: item.bannerUrl }} style={styles.banner} />
+      <Image source={{ uri: item.logoUrl }} style={styles.logo} />
+      <Text style={styles.teamName}>{item.teamName}</Text>
+      <Text
+        style={styles.playerCount}
+      >{`Players: ${item.players.length}`}</Text>
+    </TouchableOpacity>
+  );
 
   return (
-    <View>
-      <Text>Coach Dashboard</Text>
-
-      <Button title="Create New Team" onPress={() => setIsModalVisible(true)} />
-
-      <Modal visible={isModalVisible} animationType="slide">
-        <View>
-          <Text>Create a new team</Text>
-          <TextInput
-            value={teamName}
-            onChangeText={setTeamName}
-            placeholder="Enter team name"
-          />
-          <Button title="Pick Team Avatar" onPress={pickImage} />
-          {teamAvatar && (
-            <Image
-              source={{ uri: teamAvatar }}
-              style={{ width: 100, height: 100 }}
-            />
-          )}
-          <Button title="Create Team" onPress={createTeam} />
-          <Button title="Cancel" onPress={() => setIsModalVisible(false)} />
-        </View>
-      </Modal>
-
+    <View style={styles.container}>
+      <Text style={styles.header}>Coach Dashboard</Text>
+      <TouchableOpacity
+        style={styles.createButton}
+        onPress={() => setIsModalVisible(true)}
+      >
+        <Icon name="add" size={24} color="white" />
+      </TouchableOpacity>
       <FlatList
-        data={teams.filter(
-          (team) => team.coachId === users.find((u) => u.role === "coach")?.id
-        )}
+        data={teams}
+        renderItem={renderTeamItem}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View key={item.id}>
-            {item.avatar && (
+        numColumns={2}
+        columnWrapperStyle={styles.row}
+      />
+      <Modal
+        visible={isModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalHeader}>Create New Team</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter team name"
+              value={newTeamName}
+              onChangeText={setNewTeamName}
+            />
+            <TouchableOpacity
+              style={styles.imageButton}
+              onPress={() => pickImage("logo")}
+            >
+              <Text style={styles.imageButtonText}>Select Logo</Text>
+            </TouchableOpacity>
+            {newTeamLogo && (
               <Image
-                source={{ uri: item.avatar }}
-                style={{ width: 50, height: 50 }}
+                source={{ uri: newTeamLogo.path }}
+                style={styles.previewImage}
               />
             )}
-            <Text>{item.teamName}</Text>
-            <TextInput
-              value={playerEmail}
-              onChangeText={setPlayerEmail}
-              placeholder="Enter player email"
-            />
-            <Button
-              title="Invite Player"
-              onPress={() => invitePlayer(item.id)}
-            />
+            <TouchableOpacity
+              style={styles.imageButton}
+              onPress={() => pickImage("banner")}
+            >
+              <Text style={styles.imageButtonText}>Select Banner</Text>
+            </TouchableOpacity>
+            {newTeamBanner && (
+              <Image
+                source={{ uri: newTeamBanner.path }}
+                style={styles.previewImage}
+              />
+            )}
+            <TouchableOpacity
+              style={styles.createTeamButton}
+              onPress={handleCreateTeam}
+            >
+              <Text style={styles.createTeamButtonText}>Create Team</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setIsModalVisible(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
-        )}
-      />
+        </View>
+      </Modal>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: "#f5f5f5",
+  },
+  header: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  createButton: {
+    position: "absolute",
+    right: 20,
+    top: 20,
+    backgroundColor: "#4CAF50",
+    borderRadius: 30,
+    width: 60,
+    height: 60,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 5,
+  },
+  row: {
+    justifyContent: "space-between",
+  },
+  teamItem: {
+    width: "48%",
+    marginBottom: 20,
+    borderRadius: 10,
+    overflow: "hidden",
+    backgroundColor: "white",
+    elevation: 3,
+  },
+  banner: {
+    width: "100%",
+    height: 100,
+  },
+  logo: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    position: "absolute",
+    top: 75,
+    left: 10,
+    borderWidth: 2,
+    borderColor: "white",
+  },
+  teamName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginTop: 30,
+    marginHorizontal: 10,
+  },
+  playerCount: {
+    fontSize: 14,
+    color: "gray",
+    marginHorizontal: 10,
+    marginTop: 5,
+    marginBottom: 10,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 10,
+    width: "80%",
+  },
+  modalHeader: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  input: {
+    height: 40,
+    borderColor: "#ddd",
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    marginBottom: 15,
+  },
+  imageButton: {
+    backgroundColor: "#3498db",
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 10,
+  },
+  imageButtonText: {
+    color: "white",
+    textAlign: "center",
+  },
+  previewImage: {
+    width: "100%",
+    height: 150,
+    resizeMode: "cover",
+    borderRadius: 5,
+    marginBottom: 10,
+  },
+  createTeamButton: {
+    backgroundColor: "#4CAF50",
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 10,
+  },
+  createTeamButtonText: {
+    color: "white",
+    textAlign: "center",
+    fontWeight: "bold",
+  },
+  cancelButton: {
+    backgroundColor: "#e74c3c",
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 10,
+  },
+  cancelButtonText: {
+    color: "white",
+    textAlign: "center",
+    fontWeight: "bold",
+  },
+});
 
 export default CoachDashboard;

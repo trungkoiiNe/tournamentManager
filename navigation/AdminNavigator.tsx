@@ -15,6 +15,8 @@ import TeamsManagement from "../screens/TeamsManagement";
 import ProfileRouter from "../routers/ProfileRouter";
 import AddTournament from "../screens/AddTournament";
 import TournamentRouter from "../routers/TournamentRouter";
+// import Home from "../screens/Home";
+import HomeRouter from "../routers/HomeRouter";
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator(); // Create a StackNavigator instance
 
@@ -23,6 +25,7 @@ export default function AdminNavigator() {
     <PaperProvider>
       <Tab.Navigator
         screenOptions={({ route }) => ({
+          headerShown:false,
           tabBarIcon: ({ focused, color, size }) => {
             let iconName;
 
@@ -38,12 +41,14 @@ export default function AdminNavigator() {
           },
         })}
       >
+        <Tab.Screen name="Home" component={HomeRouter} />
         <Tab.Screen name="Players" component={PlayersManagement} />
         {/* <Tab.Screen name="Coaches" component={CoachesManagement} /> */}
         {/* <Tab.Screen name="Edit profile" component={EditProfile} /> */}
         <Tab.Screen name="Profile" component={ProfileRouter} />
         <Tab.Screen name="Tournamentss" component={TournamentRouter} />
         <Tab.Screen name="TeamsManagement" component={TeamsManagement} />
+
         {/* <Tab.Screen name="Dashboard" component={PlayerDashboard} /> */}
 
       </Tab.Navigator>

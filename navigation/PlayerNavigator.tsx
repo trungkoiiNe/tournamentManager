@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Provider as PaperProvider } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import ProfileRouter from "../routers/ProfileRouter";
-
+import NotificationButton from "../components/NotificationButton";
 const Tab = createBottomTabNavigator();
 export default function PlayerNavigator() {
   return (
@@ -23,6 +23,7 @@ export default function PlayerNavigator() {
 
             return <Icon name={iconName ?? ""} size={size} color={color} />;
           },
+          headerRight: () => <NotificationButton />,
         })}
       >
         <Tab.Screen name="Dashboard" component={ProfileRouter} />

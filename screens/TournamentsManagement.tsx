@@ -1,55 +1,23 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
   FlatList,
   StyleSheet,
-  TextInput,
+  Image,
   TouchableOpacity,
   Alert,
 } from "react-native";
 import { useStore } from "../store/store";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { Picker } from "@react-native-picker/picker";
 
 export default function TournamentsManagement({ navigation }) {
-  const [name, setName] = useState("");
-  const [teams, setTeams] = useState<string[]>([]);
-  const [schedule, setSchedule] = useState("");
-  const [scores, setScores] = useState("");
-  const goToAddTournament = () => {
-    navigation.navigate("AddTournament");
-  };
-  const {
-    tournaments,
-    fetchTournaments,
-    addTournament,
-    updateTournament,
-    deleteTournament,
-  } = useStore();
+  const { tournaments, fetchTournaments, deleteTournament } = useStore();
 
   useEffect(() => {
     fetchTournaments();
   }, []);
-
-  const handleAddTournament = async () => {
-    if (!name || teams.length === 0 || !schedule || !scores) {
-      Alert.alert("Error", "Please fill in all fields");
-      return;
-    }
-    await addTournament({ name, teams, schedule, scores });
-    setName("");
-    setTeams([]);
-    setSchedule("");
-    setScores("");
-    Alert.alert("Success", "Tournament added successfully");
-  };
-
-  const handleUpdateTournament = async (tournament: any) => {
-    // Implement an edit form or modal here
-    Alert.alert("Update Tournament", "Implement update functionality");
-  };
 
   const handleDeleteTournament = async (id: string) => {
     Alert.alert(
@@ -69,33 +37,28 @@ export default function TournamentsManagement({ navigation }) {
   };
 
   const renderItem = ({ item }: { item: any }) => (
-    <View style={styles.item}>
-      <Text style={styles.itemText}>
-        <Ionicons name="trophy" size={16} color="#333" /> {item.name}
-      </Text>
-      <Text style={styles.itemText}>
-        {/* <Ionicons name="people" size={16} color="#333" /> Teams: {item.teams.join(", ")} */}
-      </Text>
-      <Text style={styles.itemText}>
-        <Ionicons name="calendar" size={16} color="#333" /> Schedule:{" "}
-        {JSON.stringify(item.schedule)}
-      </Text>
-      <Text style={styles.itemText}>
-        <Ionicons name="bar-chart" size={16} color="#333" /> Scores:{" "}
-        {JSON.stringify(item.scores)}
-      </Text>
+    <View style={styles.tournamentItem}>
+      <Image source={{ uri: item.bannerUrl }} style={styles.banner} />
+      <Image source={{ uri: item.logoUrl }} style={styles.logo} />
+      <View style={styles.infoContainer}>
+        <Text style={styles.name}>{item.name}</Text>
+        <Text style={styles.description}>{item.purpose}</Text>
+        <Text style={styles.dateTime}>
+          {item.startDate.toDate().toLocaleDateString()} - {item.endDate.toDate().toLocaleDateString()}
+        </Text>
+      </View>
       <View style={styles.buttonContainer}>
         <TouchableOpacity
-          onPress={() => handleUpdateTournament(item)}
-          style={[styles.actionButton, { backgroundColor: "#4CAF50" }]}
+          onPress={() => navigation.navigate("UpdateTournament", { tournament: item })}
+          style={styles.iconButton}
         >
-          <Text style={styles.buttonText}>Update</Text>
+          <Ionicons name="create-outline" size={24} color="#4CAF50" />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => handleDeleteTournament(item.id)}
-          style={[styles.actionButton, { backgroundColor: "#F44336" }]}
+          style={styles.iconButton}
         >
-          <Text style={styles.buttonText}>Delete</Text>
+          <Ionicons name="trash-outline" size={24} color="#F44336" />
         </TouchableOpacity>
       </View>
     </View>
@@ -110,8 +73,9 @@ export default function TournamentsManagement({ navigation }) {
       >
         <LinearGradient
           colors={["#4c669f", "#3b5998", "#192f6a"]}
-          style={{ borderRadius: 5 }}
+          style={styles.gradient}
         >
+          <Ionicons name="add" size={24} color="white" />
           <Text style={styles.buttonText}>Add New Tournament</Text>
         </LinearGradient>
       </TouchableOpacity>
@@ -119,6 +83,7 @@ export default function TournamentsManagement({ navigation }) {
         data={tournaments}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContainer}
       />
     </View>
   );
@@ -137,61 +102,73 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: "center",
   },
-  inputContainer: {
-    backgroundColor: "white",
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  input: {
-    height: 40,
-    borderColor: "#ddd",
-    borderWidth: 1,
-    borderRadius: 5,
-    marginBottom: 10,
-    padding: 10,
-    fontSize: 16,
-  },
   addButton: {
-    borderRadius: 5,
+    marginBottom: 20,
+    borderRadius: 10,
     overflow: "hidden",
+  },
+  gradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 12,
   },
   buttonText: {
     color: "white",
     fontWeight: "bold",
-    textAlign: "center",
-    padding: 12,
     fontSize: 16,
+    marginLeft: 10,
   },
-  item: {
+  listContainer: {
+    paddingBottom: 20,
+  },
+  tournamentItem: {
     backgroundColor: "white",
-    padding: 15,
     borderRadius: 10,
-    marginBottom: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    marginBottom: 20,
+    overflow: "hidden",
+    elevation: 3,
   },
-  itemText: {
-    fontSize: 16,
+  banner: {
+    width: "100%",
+    height: 150,
+  },
+  logo: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    position: "absolute",
+    top: 120,
+    left: 20,
+    borderWidth: 2,
+    borderColor: "white",
+  },
+  infoContainer: {
+    padding: 15,
+    paddingTop: 30,
+  },
+  name: {
+    fontSize: 18,
+    fontWeight: "bold",
     marginBottom: 5,
+  },
+  description: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 5,
+  },
+  dateTime: {
+    fontSize: 12,
+    color: "#999",
   },
   buttonContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
+    justifyContent: "flex-end",
+    padding: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
   },
-  actionButton: {
-    flex: 1,
-    borderRadius: 5,
-    padding: 8,
-    marginHorizontal: 5,
+  iconButton: {
+    padding: 10,
   },
 });

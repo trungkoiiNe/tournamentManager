@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+} from "react-native";
 import { useAuthStore } from "../store/authStore";
 import firestore from "@react-native-firebase/firestore";
 import storage from "@react-native-firebase/storage";
@@ -49,10 +56,14 @@ export default function PlayerDashboard({ navigation }) {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Image
-          source={avatarUrl ? { uri: avatarUrl } : require("../assets/messi.png")}
+          source={
+            avatarUrl ? { uri: avatarUrl } : require("../assets/messi.png")
+          }
           style={styles.profileImage}
         />
-        <Text style={styles.title}>Welcome, {profile?.name || user?.email}</Text>
+        <Text style={styles.title}>
+          Welcome, {profile?.name || user?.email}
+        </Text>
       </View>
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Personal Information</Text>
@@ -89,6 +100,7 @@ export default function PlayerDashboard({ navigation }) {
       >
         <Text style={styles.buttonText}>Logout</Text>
       </TouchableOpacity>
+      {/* <DraggableNotificationButton /> */}
     </ScrollView>
   );
 }
