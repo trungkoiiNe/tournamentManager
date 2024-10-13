@@ -11,7 +11,7 @@ import {
 import { useStore } from "../store/store";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-
+import { alert } from "@baronha/ting";
 export default function TournamentsManagement({ navigation }) {
   const { tournaments, fetchTournaments, deleteTournament } = useStore();
 
@@ -29,7 +29,11 @@ export default function TournamentsManagement({ navigation }) {
           text: "Delete",
           onPress: async () => {
             await deleteTournament(id);
-            Alert.alert("Success", "Tournament deleted successfully");
+            alert({
+              title: "Success",
+              message: "Tournament deleted successfully",
+              preset: "done",
+            });
           },
         },
       ]
@@ -44,12 +48,15 @@ export default function TournamentsManagement({ navigation }) {
         <Text style={styles.name}>{item.name}</Text>
         <Text style={styles.description}>{item.purpose}</Text>
         <Text style={styles.dateTime}>
-          {item.startDate.toDate().toLocaleDateString()} - {item.endDate.toDate().toLocaleDateString()}
+          {item.startDate.toDate().toLocaleDateString()} -{" "}
+          {item.endDate.toDate().toLocaleDateString()}
         </Text>
       </View>
       <View style={styles.buttonContainer}>
         <TouchableOpacity
-          onPress={() => navigation.navigate("UpdateTournament", { tournament: item })}
+          onPress={() =>
+            navigation.navigate("UpdateTournament", { tournament: item })
+          }
           style={styles.iconButton}
         >
           <Ionicons name="create-outline" size={24} color="#4CAF50" />

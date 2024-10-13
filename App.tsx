@@ -3,7 +3,11 @@ import React from 'react';
 import AppNavigator from './navigation/AppNavigator';
 
 const App = () => {
-  return <AppNavigator />;
+  return (
+    // <NotifierWrapper>
+      <AppNavigator />
+    // </NotifierWrapper>
+  );
 };
 
 export default App;

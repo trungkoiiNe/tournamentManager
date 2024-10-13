@@ -12,6 +12,7 @@ import { useStore } from "../store/store";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
+import { alert } from "@baronha/ting";
 
 export default function PlayersManagement() {
   const [name, setName] = useState("");
@@ -31,21 +32,32 @@ export default function PlayersManagement() {
   }, []);
 
   const handleAddUser = async () => {
-    if (!name || !role || !teamId || !stats) {
-      Alert.alert("Error", "Please fill in all fields");
+    if (!name || !role || !stats) {
+      alert({
+        title: "Error",
+        message: "Please fill in all fields",
+        preset: "error",
+      });
       return;
     }
-    await addUser({ name, role, teamId, stats });
+    await addUser({ name, role, stats, teamId: "", email: "" });
     setName("");
     setRole("");
     setTeamId("");
     setStats("");
-    Alert.alert("Success", "User added successfully");
+    alert({
+      title: "Success",
+      message: "User added successfully",
+      preset: "done",
+    });
   };
 
-  const handleUpdateUser = async (user: any) => {
-    // Implement an edit form or modal here
-    Alert.alert("Update User", "Implement update functionality");
+  const handleUpdateUser = async (user) => {
+    alert({
+      title: "Update User",
+      message: "Implement update functionality",
+      preset: "spinner",
+    });
   };
 
   const handleDeleteUser = async (id) => {
@@ -55,23 +67,36 @@ export default function PlayersManagement() {
         text: "Delete",
         onPress: async () => {
           await deleteUser(id);
-          Alert.alert("Success", "User deleted successfully");
+          // Alert.alert("Success", "User deleted successfully");
         },
       },
     ]);
   };
 
+  const getRoleIcon = (role) => {
+    switch (role) {
+      case "player":
+        return "football-outline";
+      case "coach":
+        return "megaphone-outline"; // Alternative icon for coach
+      case "organizer":
+        return "calendar-outline";
+      default:
+        return "person-outline";
+    }
+  };
   const renderItem = ({ item }) => (
     <View style={styles.item}>
       <Text style={styles.itemText}>
-        <Ionicons name="person" size={16} color="#333" /> {item.name}
+        <Ionicons name={getRoleIcon(item.role)} size={16} color="#333" />{" "}
+        {item.name}
       </Text>
       <Text style={styles.itemText}>
         <Ionicons name="briefcase" size={16} color="#333" /> {item.role}
       </Text>
-      <Text style={styles.itemText}>
+      {/* <Text style={styles.itemText}>
         <Ionicons name="people" size={16} color="#333" /> Team ID: {item.teamId}
-      </Text>
+      </Text> */}
       <Text style={styles.itemText}>
         <Ionicons name="stats-chart" size={16} color="#333" /> Stats:{" "}
         {item.stats}
@@ -93,6 +118,20 @@ export default function PlayersManagement() {
     </View>
   );
 
+  const renderRoleOption = (roleValue, label) => (
+    <TouchableOpacity
+      style={styles.radioOption}
+      onPress={() => setRole(roleValue)}
+    >
+      <Ionicons
+        name={role === roleValue ? "radio-button-on" : "radio-button-off"}
+        size={20}
+        color="#333"
+      />
+      <Text style={styles.radioLabel}>{label}</Text>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Players Management</Text>
@@ -103,23 +142,17 @@ export default function PlayersManagement() {
           value={name}
           onChangeText={setName}
         />
-        <Picker
-          selectedValue={role}
-          style={styles.input}
-          onValueChange={(itemValue) => setRole(itemValue)}
-        >
-          <Picker.Item label="Select Role" value="" />
-          <Picker.Item label="Player" value="player" />
-          <Picker.Item label="Coach" value="coach" />
-          <Picker.Item label="Organizer" value="organizer" />
-        </Picker>
-
-        <TextInput
+        <View style={styles.radioGroup}>
+          {renderRoleOption("player", "Player")}
+          {renderRoleOption("coach", "Coach")}
+          {/* {renderRoleOption("organizer", "Organizer")} */}
+        </View>
+        {/* <TextInput
           style={styles.input}
           placeholder="Team ID"
           value={teamId}
           onChangeText={setTeamId}
-        />
+        /> */}
         <TextInput
           style={styles.input}
           placeholder="Stats"
@@ -135,17 +168,6 @@ export default function PlayersManagement() {
           </LinearGradient>
         </TouchableOpacity>
       </View>
-      <Picker
-        selectedValue={selectedUserType}
-        style={styles.input}
-        onValueChange={(itemValue) => setSelectedUserType(itemValue)}
-      >
-        <Picker.Item label="All Users" value="all" />
-        <Picker.Item label="Players" value="player" />
-        <Picker.Item label="Coaches" value="coach" />
-        <Picker.Item label="Organizers" value="organizer" />
-      </Picker>
-
       <FlatList
         data={filteredUsers}
         renderItem={renderItem}
@@ -187,6 +209,21 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     padding: 10,
     fontSize: 16,
+    backgroundColor: "#fff",
+  },
+  radioGroup: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 10,
+  },
+  radioOption: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  radioLabel: {
+    marginLeft: 5,
+    fontSize: 16,
+    color: "#333",
   },
   addButton: {
     borderRadius: 5,

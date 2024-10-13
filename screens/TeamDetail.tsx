@@ -10,19 +10,25 @@ import {
   Modal,
   FlatList,
   TextInput,
-  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useStore } from "../store/store";
 import { useAuthStore } from "../store/authStore";
+import { alert } from "@baronha/ting";
 
 const { width, height } = Dimensions.get("window");
 
 export default function TeamDetail({ route, navigation }) {
   const { teamId } = route.params;
-  const { teams, fetchAllPlayers, invitePlayersToTeam, fetchTeamMembers } =
-    useStore();
+  const {
+    teams,
+    fetchAllPlayers,
+    invitePlayersToTeam,
+    fetchTeamMembers,
+    fetchTeams,
+  } = useStore();
   const coachId = useAuthStore((state) => state.user?.email);
   const [team, setTeam] = useState(null);
   const [teamMembers, setTeamMembers] = useState([]);
@@ -30,24 +36,28 @@ export default function TeamDetail({ route, navigation }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlayers, setSelectedPlayers] = useState([]);
   const [allPlayers, setAllPlayers] = useState([]);
-
-  useEffect(() => {
+  const [loading, setLoading] = useState(true);
+  const blankImageUrl =
+    "https://firebasestorage.googleapis.com/v0/b/tournament-manager-d7665.appspot.com/o/noimages.png?alt=media&token=5dd2c160-9ea2-44b9-b913-5aba4f6fc3b8";
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    await fetchTeams();
     const currentTeam = teams.find((t) => t.id === teamId);
     setTeam(currentTeam);
+    console.log(teams.map((team) => team.teamName));
+    const [members, players] = await Promise.all([
+      fetchTeamMembers(teamId),
+      fetchAllPlayers(),
+    ]);
 
-    const loadTeamMembers = async () => {
-      const members = await fetchTeamMembers(teamId);
-      setTeamMembers(members);
-    };
+    setTeamMembers(members);
+    setAllPlayers(players);
+    setLoading(false);
+  }, [teamId, fetchTeams, fetchTeamMembers, fetchAllPlayers]);
 
-    const loadAllPlayers = async () => {
-      const players = await fetchAllPlayers();
-      setAllPlayers(players);
-    };
-
-    loadTeamMembers();
-    loadAllPlayers();
-  }, [teamId, teams, fetchTeamMembers, fetchAllPlayers]);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const filteredPlayers = useMemo(() => {
     return allPlayers.filter(
@@ -69,26 +79,51 @@ export default function TeamDetail({ route, navigation }) {
   const handleInvitePlayers = useCallback(async () => {
     try {
       await invitePlayersToTeam(teamId, selectedPlayers);
-      Alert.alert("Success", "Invitations sent successfully");
+      alert({
+        title: "Success",
+        message: "Invitations sent successfully",
+        preset: "done",
+      });
       setIsModalVisible(false);
       setSelectedPlayers([]);
     } catch (error) {
-      console.error("Error inviting players:", error);
-      Alert.alert("Error", "Failed to send invitations");
+      alert({
+        title: "Error",
+        message: "Failed to invite players",
+        preset: "error",
+      });
     }
   }, [teamId, selectedPlayers, invitePlayersToTeam]);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
 
   if (!team) return <Text>Team not found</Text>;
 
   return (
     <ScrollView style={styles.container}>
-      <Image source={{ uri: team.bannerUrl }} style={styles.banner} />
+      <Image
+        source={{
+          uri: team.bannerUrl || blankImageUrl,
+        }}
+        style={styles.banner}
+      />
       <LinearGradient
         colors={["rgba(0,0,0,0.8)", "transparent"]}
         style={styles.gradient}
       />
       <View style={styles.infoContainer}>
-        <Image source={{ uri: team.logoUrl }} style={styles.logo} />
+        <Image
+          source={{
+            uri: team.logoUrl || blankImageUrl,
+          }}
+          style={styles.logo}
+        />
         <Text style={styles.name}>{team.teamName}</Text>
         <Text style={styles.coachName}>Coach: {coachId}</Text>
       </View>
@@ -102,12 +137,14 @@ export default function TeamDetail({ route, navigation }) {
         ))}
       </View>
 
-      <TouchableOpacity
-        style={styles.inviteButton}
-        onPress={() => setIsModalVisible(true)}
-      >
-        <Text style={styles.inviteButtonText}>Invite Players</Text>
-      </TouchableOpacity>
+      {team.coachId === coachId && (
+        <TouchableOpacity
+          style={styles.inviteButton}
+          onPress={() => setIsModalVisible(true)}
+        >
+          <Text style={styles.inviteButtonText}>Invite Players</Text>
+        </TouchableOpacity>
+      )}
 
       <Modal
         visible={isModalVisible}
@@ -158,10 +195,6 @@ export default function TeamDetail({ route, navigation }) {
     </ScrollView>
   );
 }
-
-// ... (styles remain the same)
-
-// ... (styles remain the same)
 
 const styles = StyleSheet.create({
   container: {
@@ -306,5 +339,10 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     fontWeight: "bold",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

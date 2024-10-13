@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, Platform } from "react-native";
+import {
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Image,
+  Platform,
+} from "react-native";
 import { useAuthStore } from "../store/authStore";
 import firestore from "@react-native-firebase/firestore";
 import storage from "@react-native-firebase/storage";
 import ImagePicker from "react-native-image-crop-picker";
-
+import { alert } from "@baronha/ting";
 export default function EditProfile({ navigation }) {
   const user = useAuthStore((state) => state.user);
   const [profile, setProfile] = useState({
@@ -39,11 +47,19 @@ export default function EditProfile({ navigation }) {
         .collection("TournamentManager")
         .doc(user?.email)
         .update(profile);
-      alert("Profile updated successfully");
+      alert({
+        title: "Thành công",
+        message: "Cập nhật thông tin thành công",
+        haptic: "success",
+      });
       navigation.goBack();
     } catch (error) {
-      console.log("Update error:", error);
-      alert("Failed to update profile. Please try again.");
+      // console.log("Update error:", error);
+      alert({
+        title: "Lỗi",
+        message: "Không thể cập nhật thông tin. Vui lòng thử lại.",
+        preset: "error",
+      });
     }
   };
 
@@ -63,7 +79,11 @@ export default function EditProfile({ navigation }) {
         (snapshot) => {},
         (error) => {
           console.error(error);
-          alert("Failed to upload image. Please try again.");
+          alert({
+            title: "Lỗi",
+            message: "Không thể tải lên ảnh. Vui lòng thử lại.",
+            preset: "error",
+          });
         },
         async () => {
           const downloadURL = await storageRef.getDownloadURL();

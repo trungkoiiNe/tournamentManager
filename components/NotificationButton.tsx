@@ -1,31 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { TouchableOpacity, StyleSheet, View, Text, Modal, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useStore } from '../store/store';
+import { useAuthStore } from '../store/authStore';
 
 const NotificationButton = () => {
   const [modalVisible, setModalVisible] = useState(false);
-  const [loading, setLoading] = useState(false);
   const { pendingInvitations, fetchPendingInvitations, respondToInvitation } = useStore();
+  const user = useAuthStore(state => state.user);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchPendingInvitations();
-  }, []);
-
-  const handleResponse = async (invitationId: string, response: 'Approved' | 'Declined') => {
-    setLoading(true);
-    try {
-      await respondToInvitation(invitationId, response);
-      await fetchPendingInvitations(); // Refresh the invitations list
-    } catch (error) {
-      console.error('Error responding to invitation:', error);
-      // You might want to show an error message to the user here
-    } finally {
-      setLoading(false);
+    if (user) {
+      fetchInvitations();
     }
+  }, [user]);
+
+  const fetchInvitations = async () => {
+    setLoading(true);
+    await fetchPendingInvitations();
+    setLoading(false);
   };
 
-  const renderInvitation = ({ item }) => (
+  const handleResponse = async (invitationId: string, response: 'Approved' | 'Declined') => {
+    await respondToInvitation(invitationId, response);
+  };
+
+  const renderInvitation = ({ item }: { item: any }) => (
     <View style={[
       styles.invitationItem,
       item.status === 'Approved' && styles.approvedInvitation,
@@ -39,14 +40,12 @@ const NotificationButton = () => {
           <TouchableOpacity
             style={[styles.responseButton, styles.approveButton]}
             onPress={() => handleResponse(item.id, 'Approved')}
-            disabled={loading}
           >
             <Text style={styles.buttonText}>Approve</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.responseButton, styles.declineButton]}
             onPress={() => handleResponse(item.id, 'Declined')}
-            disabled={loading}
           >
             <Text style={styles.buttonText}>Decline</Text>
           </TouchableOpacity>
@@ -74,12 +73,15 @@ const NotificationButton = () => {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Team Invitations</Text>
-            {loading && <ActivityIndicator size="large" color="#0000ff" />}
-            <FlatList
-              data={pendingInvitations}
-              renderItem={renderInvitation}
-              keyExtractor={item => item.id}
-            />
+            {loading ? (
+              <ActivityIndicator size="large" color="#0000ff" />
+            ) : (
+              <FlatList
+                data={pendingInvitations}
+                renderItem={renderInvitation}
+                keyExtractor={item => item.id}
+              />
+            )}
             <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
               <Text style={styles.closeButtonText}>Close</Text>
             </TouchableOpacity>

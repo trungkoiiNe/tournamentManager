@@ -1,9 +1,8 @@
 import { create } from "zustand";
 import firestore from "@react-native-firebase/firestore";
-import { persist, createJSONStorage } from "zustand/middleware";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import storage from "@react-native-firebase/storage";
 import { useAuthStore } from "./authStore";
+import { alert } from "@baronha/ting";
 interface User {
   id: string;
   role: string;
@@ -115,6 +114,29 @@ interface Store {
   // fetchTeamsSpecifiedCoachId: (coachId: string) => Promise<Team[]>;
   fetchTeamsSpecifiedCoachId: (coachId: string) => void;
   joinTournament: (tournamentId: string, teamId: string) => Promise<void>;
+  registeredTeams: Team[];
+  fetchRegisteredTeams: (tournamentId: string) => () => void;
+  updateTournamentWithSchedule: (
+    tournamentId: string,
+    updatedTournament: Partial<Tournament>,
+    demoSchedule: any[]
+  ) => Promise<{ success: boolean; error?: any }>;
+  generateDemoSchedule: (teams: Team[], format: string) => any[];
+  updateMatchResult: (
+    schedule: any[],
+    matchIndex: number,
+    team: "team1" | "team2",
+    result: number
+  ) => any[];
+  setMatchTimestamp: (
+    schedule: any[],
+    matchIndex: number,
+    timestamp: Date
+  ) => any[];
+  calculateNextMatches: (
+    schedule: any[],
+    currentRound: number
+  ) => { updatedSchedule: any[]; nextRound: number; winner?: any };
 }
 
 export const useStore = create<Store>((set, get) => ({
@@ -158,8 +180,22 @@ export const useStore = create<Store>((set, get) => ({
   },
 
   deleteUser: async (id) => {
-    await firestore().collection("TournamentManager").doc(id).delete();
-    set((state) => ({ users: state.users.filter((u) => u.id !== id) }));
+    try {
+      await firestore().collection("TournamentManager").doc(id).delete();
+
+      set((state) => ({
+        users: state.users.filter((u) => u.id !== id),
+      }));
+      alert({
+        title: "User Deleted",
+        message: "The user has been deleted successfully.",
+      });
+    } catch (error) {
+      alert({
+        title: "Error",
+        message: "Failed to delete user.",
+      });
+    }
   },
 
   // fetchTournaments: () => {
@@ -618,6 +654,12 @@ export const useStore = create<Store>((set, get) => ({
         const teamData = teamDoc.data() as Team;
         const tournamentData = tournamentDoc.data() as Tournament;
 
+        // Check if the team is already in the tournament
+        if (tournamentData.teams && tournamentData.teams.includes(teamId)) {
+          // Alert.alert("Error", "Team has already joined this tournament");
+          throw new Error("Team has already joined this tournament");
+        }
+
         const updatedTeamTournaments = [
           ...(teamData.tournaments || []),
           tournamentId,
@@ -648,9 +690,254 @@ export const useStore = create<Store>((set, get) => ({
         ),
       }));
     } catch (error) {
-      console.error("Error joining tournament:", error);
+      // console.error("Error joining tournament:", error);
       throw error;
     }
   },
   // ... (rest of the code remains the same)
+  registeredTeams: [],
+
+  fetchRegisteredTeams: (tournamentId: string) => {
+    const unsubscribe = firestore()
+      .collection("tournaments")
+      .doc(tournamentId)
+      .onSnapshot(async (tournamentDoc) => {
+        const tournamentData = tournamentDoc.data() as Tournament;
+        if (!tournamentData || !tournamentData.teams) {
+          set({ registeredTeams: [] });
+          return;
+        }
+
+        try {
+          const teamPromises = tournamentData.teams.map((teamId) =>
+            firestore().collection("teams").doc(teamId).get()
+          );
+          const teamDocs = await Promise.all(teamPromises);
+          const teams = teamDocs.map(
+            (doc) => ({ id: doc.id, ...doc.data() } as Team)
+          );
+          set({ registeredTeams: teams });
+        } catch (error) {
+          console.error("Error fetching registered teams:", error);
+          set({ error: "Failed to fetch registered teams" });
+        }
+      });
+
+    return unsubscribe;
+  },
+  updateTournamentWithSchedule: async (
+    tournamentId: string,
+    updatedTournament: Partial<Tournament>,
+    demoSchedule: any[]
+  ) => {
+    set({ isLoading: true, error: null });
+    try {
+      const tournamentRef = firestore()
+        .collection("tournaments")
+        .doc(tournamentId);
+
+      // Update tournament data
+      await tournamentRef.update(updatedTournament);
+
+      // Add schedule to a subcollection
+      const scheduleCollection = tournamentRef.collection("schedules");
+      const batch = firestore().batch();
+
+      demoSchedule.forEach((match) => {
+        const matchRef = scheduleCollection.doc();
+        batch.set(matchRef, {
+          round: match.round,
+          team1Id: match.team1.id,
+          team2Id: match.team2.id,
+          team1Result: match.team1Result,
+          team2Result: match.team2Result,
+          timestamp: match.timestamp
+            ? firestore.Timestamp.fromDate(match.timestamp)
+            : null,
+          // Add any other relevant fields here
+        });
+      });
+
+      await batch.commit();
+
+      // Update local state
+      set((state) => ({
+        tournaments: state.tournaments.map((t) =>
+          t.id === tournamentId ? { ...t, ...updatedTournament } : t
+        ),
+      }));
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error updating tournament with schedule:", error);
+      set({ error: "Failed to update tournament with schedule" });
+      return { success: false, error };
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  generateDemoSchedule: (teams: Team[], format: string): any[] => {
+    if (teams.length < 2) {
+      throw new Error("Not enough teams to generate a schedule");
+    }
+
+    let schedule = [];
+
+    if (format === "knockout") {
+      schedule = generateKnockoutSchedule(teams);
+    } else if (format === "groupKnockout") {
+      schedule = generateGroupKnockoutSchedule(teams);
+    } else {
+      // Default to round-robin if format is not specified or unsupported
+      schedule = generateRoundRobinSchedule(teams);
+    }
+
+    return schedule;
+  },
+
+  updateMatchResult: (
+    schedule: any[],
+    matchIndex: number,
+    team: "team1" | "team2",
+    result: number
+  ) => {
+    const updatedSchedule = [...schedule];
+    updatedSchedule[matchIndex][`${team}Result`] = result;
+    return updatedSchedule;
+  },
+
+  setMatchTimestamp: (schedule: any[], matchIndex: number, timestamp: Date) => {
+    const updatedSchedule = [...schedule];
+    updatedSchedule[matchIndex].timestamp = timestamp;
+    return updatedSchedule;
+  },
+
+  calculateNextMatches: (schedule: any[], currentRound: number) => {
+    const currentMatches = schedule.filter(
+      (match) => match.round === currentRound
+    );
+    const winners = currentMatches
+      .filter(
+        (match) => match.team1Result !== null && match.team2Result !== null
+      )
+      .map((match) =>
+        match.team1Result > match.team2Result ? match.team1 : match.team2
+      );
+
+    if (winners.length > 1) {
+      const nextRound = currentRound + 1;
+      const nextRoundMatches = [];
+
+      for (let i = 0; i < winners.length; i += 2) {
+        if (i + 1 < winners.length) {
+          nextRoundMatches.push({
+            round: nextRound,
+            team1: winners[i],
+            team2: winners[i + 1],
+            team1Result: null,
+            team2Result: null,
+            timestamp: null,
+          });
+        } else {
+          nextRoundMatches.push({
+            round: nextRound,
+            team1: winners[i],
+            team2: { id: "bye", teamName: "BYE" },
+            team1Result: null,
+            team2Result: null,
+            timestamp: null,
+          });
+        }
+      }
+
+      return { updatedSchedule: [...schedule, ...nextRoundMatches], nextRound };
+    } else {
+      return {
+        updatedSchedule: schedule,
+        nextRound: currentRound,
+        winner: winners[0],
+      };
+    }
+  },
 }));
+const generateRoundRobinSchedule = (teams: Team[]) => {
+  let schedule = [];
+  for (let i = 0; i < teams.length - 1; i++) {
+    for (let j = i + 1; j < teams.length; j++) {
+      schedule.push({
+        round: i + 1,
+        team1: teams[i],
+        team2: teams[j],
+        team1Result: null,
+        team2Result: null,
+        timestamp: null,
+      });
+    }
+  }
+  return schedule;
+};
+
+const generateKnockoutSchedule = (teams: Team[]): any[] => {
+  let schedule: any[] = [];
+  let round = 1;
+  let remainingTeams = [...teams];
+
+  while (remainingTeams.length > 1) {
+    let roundMatches = [];
+    for (let i = 0; i < remainingTeams.length; i += 2) {
+      if (i + 1 < remainingTeams.length) {
+        roundMatches.push({
+          round: round,
+          team1: remainingTeams[i],
+          team2: remainingTeams[i + 1],
+          team1Result: null,
+          team2Result: null,
+          timestamp: null,
+        });
+      } else {
+        roundMatches.push({
+          round: round,
+          team1: remainingTeams[i],
+          team2: { id: "bye", teamName: "BYE" },
+          team1Result: null,
+          team2Result: null,
+          timestamp: null,
+        });
+      }
+    }
+    schedule = [...schedule, ...roundMatches];
+    remainingTeams = remainingTeams.filter((_, index) => index % 2 === 0);
+    round++;
+  }
+
+  return schedule;
+};
+
+const generateGroupKnockoutSchedule = (teams: Team[]): any[] => {
+  // ... (implementation)
+  const numberOfGroups = Math.min(Math.floor(teams.length / 3), 4);
+  const groups = Array.from({ length: numberOfGroups }, (_, i) => ({
+    name: String.fromCharCode(65 + i),
+    teams: [],
+  }));
+
+  // Distribute teams to groups
+  teams.forEach((team, index) => {
+    groups[index % numberOfGroups].teams.push(team);
+  });
+
+  // Generate group stage matches
+  const groupStage = groups.flatMap((group) =>
+    generateRoundRobinSchedule(group.teams).map((match) => ({
+      ...match,
+      group: group.name,
+    }))
+  );
+
+  // Generate knockout stage (simplified)
+  const knockoutTeams = groups.flatMap((group) => group.teams.slice(0, 2));
+  const knockoutStage = generateKnockoutSchedule(knockoutTeams);
+
+  return [...groupStage, ...knockoutStage];
+};

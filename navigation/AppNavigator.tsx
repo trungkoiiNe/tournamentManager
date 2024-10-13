@@ -11,6 +11,7 @@ import RegisterScreen from "../screens/RegisterScreen";
 import AdminNavigator from "./AdminNavigator";
 import CoachNavigator from "./CoachNavigator";
 import PlayerNavigator from "./PlayerNavigator";
+
 const Stack = createStackNavigator();
 
 const AppNavigator = () => {
@@ -18,7 +19,7 @@ const AppNavigator = () => {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator>
+      <Stack.Navigator screenOptions={{headerShown: false}}>
         {!user ? (
           <>
             <Stack.Screen name="Login" component={LoginScreen} />

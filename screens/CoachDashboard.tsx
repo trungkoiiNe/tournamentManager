@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+
 import {
   View,
   Text,
@@ -6,30 +8,41 @@ import {
   FlatList,
   TouchableOpacity,
   Image,
-  Alert,
   TextInput,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { useStore } from "../store/store";
 import ImagePicker from "react-native-image-crop-picker";
-import { Card } from "react-native-elements";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { useAuthStore } from "../store/authStore";
-
+import { alert } from "@baronha/ting";
 const CoachDashboard = ({ navigation }) => {
   const { teams, fetchTeamsSpecifiedCoachId, addTeam, uploadTeamImages } =
     useStore();
+  const { user } = useAuthStore();
   const coachId = useAuthStore((state) => state.user?.email);
-  // console.log(useAuthStore((state) => state.user));
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
   const [newTeamLogo, setNewTeamLogo] = useState(null);
   const [newTeamBanner, setNewTeamBanner] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchTeamsSpecifiedCoachId(coachId);
+  const loadTeams = useCallback(async () => {
+    if (coachId) {
+      setLoading(true);
+      console.log(coachId);
+      await fetchTeamsSpecifiedCoachId(coachId);
+      // console.log(teams.map((team) => team.teamName));
+      setLoading(false);
+    }
   }, [coachId, fetchTeamsSpecifiedCoachId]);
 
+  useFocusEffect(
+    useCallback(() => {
+      loadTeams();
+    }, [loadTeams])
+  );
   const pickImage = useCallback(async (type) => {
     try {
       const image = await ImagePicker.openPicker({
@@ -45,13 +58,21 @@ const CoachDashboard = ({ navigation }) => {
       }
     } catch (error) {
       console.error("ImagePicker Error:", error);
-      Alert.alert("Error", `Failed to pick ${type} image. Please try again.`);
+      alert({
+        title: "Lỗi",
+        message: `Không thể chọn ảnh ${type}. Vui lòng thử lại.`,
+        preset: "error",
+      });
     }
   }, []);
 
   const handleCreateTeam = useCallback(async () => {
     if (newTeamName.trim() === "") {
-      Alert.alert("Error", "Please enter a team name");
+      alert({
+        title: "Lỗi",
+        message: "Vui lòng nhập tên đội",
+        preset: "error",
+      });
       return;
     }
 
@@ -81,10 +102,19 @@ const CoachDashboard = ({ navigation }) => {
       setNewTeamLogo(null);
       setNewTeamBanner(null);
       setIsModalVisible(false);
-      Alert.alert("Success", "Team created successfully");
-    } catch (error) {
+      alert({
+        title: "Thành công",
+        message: "Đội bạn đã tạo thành công",
+        haptic: "success",
+      });
+      loadTeams();
+    } catch (error: any) {
       console.error("Error creating team:", error);
-      Alert.alert("Error", `Failed to create team: ${error.message}`);
+      alert({
+        title: "Lỗi",
+        message: `Không thể tạo đội: ${error.message}`,
+        preset: "error",
+      });
     }
   }, [
     newTeamName,
@@ -95,29 +125,51 @@ const CoachDashboard = ({ navigation }) => {
     newTeamBanner,
   ]);
 
-  const renderTeamItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.teamItem}
-      onPress={() => navigation.navigate("TeamDetail", { teamId: item.id })}
-    >
-      <Image source={{ uri: item.bannerUrl }} style={styles.banner} />
-      <Image source={{ uri: item.logoUrl }} style={styles.logo} />
-      <Text style={styles.teamName}>{item.teamName}</Text>
-      <Text
-        style={styles.playerCount}
-      >{`Players: ${item.players.length}`}</Text>
-    </TouchableOpacity>
+  const renderTeamItem = useCallback(
+    ({ item }) => (
+      <TouchableOpacity
+        style={styles.teamItem}
+        onPress={() => navigation.navigate("TeamDetail", { teamId: item.id })}
+      >
+        <Image
+          source={
+            item.bannerUrl
+              ? { uri: item.bannerUrl }
+              : {
+                  uri: "https://firebasestorage.googleapis.com/v0/b/tournament-manager-d7665.appspot.com/o/noimages.png?alt=media&token=5dd2c160-9ea2-44b9-b913-5aba4f6fc3b8",
+                }
+          }
+          style={styles.banner}
+        />
+        <Image source={item.logoUrl? {uri: item.logoUrl}: {uri: "https://firebasestorage.googleapis.com/v0/b/tournament-manager-d7665.appspot.com/o/noimages.png?alt=media&token=5dd2c160-9ea2-44b9-b913-5aba4f6fc3b8"}} style={styles.logo} />
+        <Text style={styles.teamName}>{item.teamName}</Text>
+        <Text
+          style={styles.playerCount}
+        >{`Players: ${item.players.length}`}</Text>
+      </TouchableOpacity>
+    ),
+    [navigation]
   );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Coach Dashboard</Text>
-      <TouchableOpacity
-        style={styles.createButton}
-        onPress={() => setIsModalVisible(true)}
-      >
-        <Icon name="add" size={24} color="white" />
-      </TouchableOpacity>
+      <Text style={styles.header}>My teams</Text>
+      {user?.role === "coach" && (
+        <TouchableOpacity
+          style={styles.createButton}
+          onPress={() => setIsModalVisible(true)}
+        >
+          <Icon name="add" size={24} color="white" />
+        </TouchableOpacity>
+      )}
       <FlatList
         data={teams}
         renderItem={renderTeamItem}
@@ -309,6 +361,11 @@ const styles = StyleSheet.create({
     color: "white",
     textAlign: "center",
     fontWeight: "bold",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 

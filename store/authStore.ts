@@ -1,11 +1,19 @@
-import { create } from 'zustand';
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
-
+import { create } from "zustand";
+import auth from "@react-native-firebase/auth";
+import firestore from "@react-native-firebase/firestore";
+import { toast } from "@baronha/ting";
 type User = {
   uid: string;
   email: string;
-  role: 'admin' | 'coach' | 'player' | 'organizer';
+  role: "admin" | "coach" | "player" | "organizer";
+  id: string;
+  // role: string;
+  name: string;
+  teamId: string;
+  stats: any;
+  experience: string;
+  position: string;
+  // email: string;
 };
 
 type AuthState = {
@@ -14,6 +22,7 @@ type AuthState = {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, role: string) => Promise<void>;
   logout: () => Promise<void>;
+  alertError: (error: any) => void;
 };
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -22,17 +31,27 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (email, password) => {
     try {
       const lowercaseEmail = email.toLowerCase();
-      const userCredential = await auth().signInWithEmailAndPassword(lowercaseEmail, password);
+      const userCredential = await auth().signInWithEmailAndPassword(
+        lowercaseEmail,
+        password
+      );
       const { uid } = userCredential.user;
-      const userDoc = await firestore().collection('TournamentManager').doc(lowercaseEmail).get();
+      const userDoc = await firestore()
+        .collection("TournamentManager")
+        .doc(lowercaseEmail)
+        .get();
       if (userDoc.exists) {
         const userData = userDoc.data();
         set({ user: { uid, email: lowercaseEmail, role: userData?.role } });
+        toast({
+          title: "Đăng nhập thành công 😎",
+          message: `Chào mừng ${email}`,
+        });
       } else {
-        throw new Error('User not found');
+        throw new Error("User not found");
       }
     } catch (error) {
-      console.error('Login error:', error);
+      // console.error("Login error:", error);
       throw error;
     }
   },
@@ -40,12 +59,28 @@ export const useAuthStore = create<AuthState>((set) => ({
   register: async (email, password, role) => {
     try {
       const lowercaseEmail = email.toLowerCase();
-      const userCredential = await auth().createUserWithEmailAndPassword(lowercaseEmail, password);
+      const userCredential = await auth().createUserWithEmailAndPassword(
+        lowercaseEmail,
+        password
+      );
       const { uid } = userCredential.user;
-      await firestore().collection('TournamentManager').doc(lowercaseEmail).set({ role });
-      set({ user: { uid, email: lowercaseEmail, role: role as 'admin' | 'coach' | 'player' | 'organizer' } });
+      await firestore()
+        .collection("TournamentManager")
+        .doc(lowercaseEmail)
+        .set({ role });
+      set({
+        user: {
+          uid,
+          email: lowercaseEmail,
+          role: role as "admin" | "coach" | "player" | "organizer",
+        },
+      });
+      toast({
+        title: "Đăng ký thành công 😎",
+        message: `Chào mừng ${email}`,
+      });
     } catch (error) {
-      console.error('Register error:', error);
+      // console.error("Register error:", error);
       throw error;
     }
   },
@@ -54,10 +89,20 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await auth().signOut();
       set({ user: null });
-      console.log(user);
+      toast({
+        title: "Đăng xuất thành công 😎",
+        message: "Chúc bạn một ngày tốt lành!",
+      });
+      // console.log(user);
     } catch (error) {
-      console.error('Logout error:', error);
-      throw error;
+      // console.error('Logout error:', error);
+      // throw error;
     }
+  },
+  alertError: (error) => {
+    alert({
+      title: "Lỗi",
+      message: error.message,
+    });
   },
 }));

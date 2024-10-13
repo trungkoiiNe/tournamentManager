@@ -9,6 +9,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@baronha/ting": "^1.2.2",
     "@expo/vector-icons": "^14.0.4",
     "@react-native-async-storage/async-storage": "^2.0.0",
     "@react-native-community/checkbox": "^0.5.17",
@@ -25,11 +26,15 @@
     "expo": "~51.0.28",
     "expo-linear-gradient": "^13.0.2",
     "expo-status-bar": "~1.12.1",
+    "lucide-react-native": "^0.452.0",
     "react": "18.2.0",
     "react-native": "0.74.5",
+    "react-native-animatable": "^1.4.0",
+    "react-native-awesome-alerts": "^2.0.0",
     "react-native-elements": "^3.4.3",
     "react-native-gesture-handler": "^2.20.0",
     "react-native-image-crop-picker": "^0.41.3",
+    "react-native-linear-gradient": "^2.8.3",
     "react-native-paper": "^5.12.5",
     "react-native-safe-area-context": "^4.11.0",
     "react-native-screens": "^3.34.0",

@@ -1,24 +1,24 @@
 import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
-  Dimensions,
-  Modal,
   Alert,
-  // FlatList,
+  Dimensions,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import firestore from "@react-native-firebase/firestore";
 import { FlatList } from "react-native-gesture-handler";
 
-import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useStore } from "../store/store";
 import CheckBox from "@react-native-community/checkbox";
+import { Picker } from "@react-native-picker/picker";
+import { LinearGradient } from "expo-linear-gradient";
 import { useAuthStore } from "../store/authStore";
+import { useStore } from "../store/store";
+import { alert } from "@baronha/ting";
 // import { FlatList } from "react-native-gesture-handler";
 const { width } = Dimensions.get("window");
 
@@ -30,34 +30,25 @@ export default function TournamentDetail({ route, navigation }) {
     fetchTeamsSpecifiedCoachId,
     joinTournament,
     fetchPrizes,
+    fetchRegisteredTeams,
+    registeredTeams,
   } = useStore();
   const { user } = useAuthStore();
   const [prizes, setPrizes] = useState([]);
-  const [modalVisible, setModalVisible] = useState(false);
+  // const [modalVisible, setModalVisible] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState("");
   const [isAgreed, setIsAgreed] = useState(false);
-  const [coachTeams, setCoachTeams] = useState([]);
+  // const [coachTeams, setCoachTeams] = useState([]);
   const [teamSelectionModalVisible, setTeamSelectionModalVisible] =
     useState(false);
   const [teamsModalVisible, setTeamsModalVisible] = useState(false);
-  const [registeredTeams, setRegisteredTeams] = useState<Team[]>([]);
 
   const tournament = tournaments.find((t) => t.id === tournamentId);
-
-  if (!tournament) return <Text>Tournament not found</Text>;
-
-  const startDate = tournament.startDate.toDate().toLocaleDateString();
-  const endDate = tournament.endDate.toDate().toLocaleDateString();
-
-  const navigateTo = (screen) => {
-    if (screen === "Teams") {
-      setTeamsModalVisible(true);
-    } else {
-      navigation.navigate(screen, { tournamentId });
-    }
-  };
-
+  const blankImageUrl =
+    "https://firebasestorage.googleapis.com/v0/b/tournament-manager-d7665.appspot.com/o/noimages.png?alt=media&token=5dd2c160-9ea2-44b9-b913-5aba4f6fc3b8";
   useEffect(() => {
+    if (!tournament) return;
+
     const loadPrizes = async () => {
       const fetchedPrizes = await fetchPrizes(tournamentId);
       setPrizes(fetchedPrizes);
@@ -65,53 +56,82 @@ export default function TournamentDetail({ route, navigation }) {
     loadPrizes();
 
     if (user && user.role === "coach") {
-      // console.log(user);
       fetchTeamsSpecifiedCoachId(user.email);
-      console.log(teams);
     }
 
-    if (tournament && tournament.teams) {
-      fetchRegisteredTeams();
-    }
+    const unsubscribe = fetchRegisteredTeams(tournamentId);
+
+    return () => {
+      unsubscribe();
+    };
   }, [tournamentId, user, tournament]);
 
-  const fetchRegisteredTeams = async () => {
-    if (!tournament || !tournament.teams) return;
+  if (!tournament) return <Text>Tournament not found</Text>;
 
-    try {
-      const teamPromises = tournament.teams.map((teamId) =>
-        firestore().collection("teams").doc(teamId).get()
-      );
-      const teamDocs = await Promise.all(teamPromises);
-      const teams = teamDocs.map(
-        (doc) => ({ id: doc.id, ...doc.data() } as Team)
-      );
-      setRegisteredTeams(teams);
-    } catch (error) {
-      console.error("Error fetching registered teams:", error);
-      Alert.alert("Error", "Failed to fetch registered teams");
+  const startDate = tournament.startDate.toDate().toLocaleDateString();
+  const endDate = tournament.endDate.toDate().toLocaleDateString();
+
+  const navigateTo = (screen: string) => {
+    if (screen === "Teams") {
+      setTeamsModalVisible(true);
+    } else {
+      navigation.navigate(screen, { tournamentId });
     }
   };
-
   const handleJoinTournament = async () => {
     if (!selectedTeam || !isAgreed) {
-      Alert.alert("Error", "Please select a team and agree to the terms.");
+      alert({
+        title: "Error",
+        message: "Please select a team and agree to the terms.",
+        preset: "error",
+      });
       return;
     }
 
     try {
       await joinTournament(tournamentId, selectedTeam);
-      Alert.alert("Success", "You have successfully joined the tournament!");
-      setModalVisible(false);
+      alert({
+        title: "Success",
+        message: "You have joined the tournament successfully",
+        preset: "done",
+      });
+      setTeamSelectionModalVisible(false);
     } catch (error) {
-      console.error("Error joining tournament:", error);
-      Alert.alert("Error", "Failed to join the tournament. Please try again.");
+      // console.error("Error joining tournament:", error);
+      const errorMessage = (error as any).message;
+      if (errorMessage === "Team has already joined this tournament") {
+        alert({
+          title: "Error",
+          message: "Team has already joined this tournament",
+          preset: "error",
+        });
+      } else {
+        alert({
+          title: "Error",
+          message: "Failed to join the tournament. Please try again.",
+          preset: "error",
+        });
+      }
     }
   };
+
   const renderTeamItem = ({ item }: { item: Team }) => (
-    <TouchableOpacity style={styles.teamItem}>
-      <Image source={{uri:item.bannerUrl}} style={styles.teamBanner}/>
-      <Image source={{ uri: item.logoUrl }} style={styles.teamLogo} />
+    <TouchableOpacity
+      style={styles.teamItem}
+      // onPress={() => navigation.navigate("TeamDetail", { teamId: item.id })}
+    >
+      <Image
+        source={{
+          uri: item.bannerUrl || blankImageUrl,
+        }}
+        style={styles.teamBanner}
+      />
+      <Image
+        source={{
+          uri: item.logoUrl || blankImageUrl,
+        }}
+        style={styles.teamLogo}
+      />
       <Text style={styles.teamName}>{item.teamName}</Text>
       <Text style={styles.coachName}>Coach: {item.coachId}</Text>
       <Text style={styles.playerCount}>Players: {item.players.length}</Text>
@@ -203,7 +223,7 @@ export default function TournamentDetail({ route, navigation }) {
       {user && user.role === "coach" && (
         <TouchableOpacity
           style={styles.joinButton}
-          onPress={() => setModalVisible(true)}
+          onPress={() => setTeamSelectionModalVisible(true)}
         >
           <Text style={styles.joinButtonText}>Join Tournament</Text>
         </TouchableOpacity>
@@ -235,7 +255,7 @@ export default function TournamentDetail({ route, navigation }) {
         </View>
       </Modal>
 
-      <Modal
+      {/* <Modal
         animationType="slide"
         transparent={true}
         visible={teamSelectionModalVisible}
@@ -258,8 +278,8 @@ export default function TournamentDetail({ route, navigation }) {
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
-
+      </Modal> */}
+      {/*
       <Modal
         animationType="slide"
         transparent={true}
@@ -280,6 +300,51 @@ export default function TournamentDetail({ route, navigation }) {
               onPress={() => setTeamsModalVisible(false)}
             >
               <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal> */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={teamSelectionModalVisible}
+        onRequestClose={() => setTeamSelectionModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Join Tournament</Text>
+            <Picker
+              selectedValue={selectedTeam}
+              onValueChange={(itemValue) => setSelectedTeam(itemValue)}
+            >
+              <Picker.Item label="Select a team" value="" />
+              {teams.map((team) => (
+                <Picker.Item
+                  key={team.id}
+                  label={team.teamName}
+                  value={team.id}
+                />
+              ))}
+            </Picker>
+            <View style={styles.checkboxContainer}>
+              <CheckBox value={isAgreed} onValueChange={setIsAgreed} />
+              <Text style={styles.checkboxLabel}>
+                I agree to join this tournament
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.joinTournamentButton}
+              onPress={handleJoinTournament}
+            >
+              <Text style={styles.joinTournamentButtonText}>
+                Join Tournament
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setTeamSelectionModalVisible(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -17,7 +17,7 @@ export default function PlayerDashboard({ navigation }) {
   const [profile, setProfile] = useState(null);
 
   useEffect(() => {
-    let unsubscribe;
+    let unsubscribe: () => void;
     if (user) {
       unsubscribe = firestore()
         .collection("TournamentManager")
@@ -25,8 +25,10 @@ export default function PlayerDashboard({ navigation }) {
         .onSnapshot((doc) => {
           if (doc.exists) {
             setProfile(doc.data());
+            // getAvatar();
           }
         });
+
     }
     return () => unsubscribe && unsubscribe();
   }, [user]);
@@ -34,10 +36,12 @@ export default function PlayerDashboard({ navigation }) {
   const getAvatar = async () => {
     try {
       const storageRef = storage().ref(`user_${user?.email}.png`);
+      // console.log(storageRef)
       const url = await storageRef.getDownloadURL();
+      console.log(url);
       return url;
     } catch (error) {
-      console.log("Error getting avatar URL:", error);
+      // console.log("Error getting avatar URL:", error);
       return null;
     }
   };

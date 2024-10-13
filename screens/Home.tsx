@@ -33,7 +33,7 @@ const Home = ({ navigation }) => {
       <TouchableOpacity
         style={styles.tournamentItem}
         onPress={() => {
-          console.log(item);
+          // console.log(item);
           navigation.navigate("TournamentDetail", { tournamentId: item.id });
         }}
       >

@@ -7,7 +7,6 @@ import {
   ScrollView,
   StyleSheet,
   Image,
-  Alert,
   ActivityIndicator,
   Platform,
 } from "react-native";
@@ -17,7 +16,7 @@ import { Picker } from "@react-native-picker/picker";
 import firestore from "@react-native-firebase/firestore";
 import ImagePicker from "react-native-image-crop-picker";
 import { Card } from "react-native-elements";
-
+import { alert } from "@baronha/ting";
 const AddTournament = ({ navigation }) => {
   const [tournamentData, setTournamentData] = useState({
     name: "",
@@ -79,7 +78,11 @@ const AddTournament = ({ navigation }) => {
         );
       } catch (error) {
         console.log("ImagePicker Error: ", error);
-        Alert.alert("Error", "Failed to pick image. Please try again.");
+        alert({
+          title: "Lỗi",
+          message: "Không thể chọn ảnh. Vui lòng thử lại.",
+          preset: "error",
+        });
       }
     },
     [handleInputChange]
@@ -108,7 +111,7 @@ const AddTournament = ({ navigation }) => {
       const result = await addTournament(newTournament, prizes);
 
       if (!result || !result.id) {
-        throw new Error('Failed to get tournament ID after adding');
+        throw new Error("Failed to get tournament ID after adding");
       }
 
       if (tournamentData.bannerImage || tournamentData.logoImage) {
@@ -119,18 +122,29 @@ const AddTournament = ({ navigation }) => {
         );
       }
 
-      Alert.alert(
-        "Success",
-        "Tournament added successfully!",
-        [{ text: "OK", onPress: () => navigation.goBack() }]
-      );
-    } catch (error) {
+      alert({
+        title: "Thành công",
+        message: "Thêm giải đấu thành công",
+        haptic: "success",
+      });
+      navigation.goBack();
+    } catch (error: any) {
       console.error("Error adding tournament:", error);
-      Alert.alert("Error", `Failed to add tournament: ${error.message}`);
+      alert({
+        title: "Lỗi",
+        message: `Không thể thêm giải đấu: ${error.message}`,
+        preset: "error",
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [tournamentData, prizes, addTournament, uploadTournamentImages, navigation]);
+  }, [
+    tournamentData,
+    prizes,
+    addTournament,
+    uploadTournamentImages,
+    navigation,
+  ]);
 
   const addPrize = useCallback(() => {
     setPrizes((prev) => [
@@ -356,7 +370,6 @@ const AddTournament = ({ navigation }) => {
     </ScrollView>
   );
 };
-
 
 const styles = StyleSheet.create({
   container: {
