@@ -1,8 +1,7 @@
 import React from "react";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { createStackNavigator } from "@react-navigation/stack"; // Import StackNavigator
-
-import { Provider as PaperProvider } from "react-native-paper";
+import {createBottomTabNavigator} from "@react-navigation/bottom-tabs";
+import {createStackNavigator} from "@react-navigation/stack"; // Import StackNavigator
+import {Provider as PaperProvider} from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
 // import PlayersManagement from './PlayersManagement';
@@ -19,19 +18,21 @@ import HomeRouter from "../routers/HomeRouter";
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator(); // Create a StackNavigator instance
 
-// Define the tabBarIcon function outside of the component
+// Define a mapping of route names to icon names
+const iconMap: { [key: string]: [string, string] } = {
+    Players: ["account-group-outline", "account-group"],
+    Coaches: ["whistle-outline", "whistle"],
+    Tournaments: ["soccer-outline", "soccer"],
+    Teams: ["soccer-outline", "soccer"],
+    Profile: ["account-outline", "account"],
+    Home: ["home-outline", "home"],
+};
+
+// Define the tabBarIcon function using the mapping
 const getTabBarIcon = (route: any, focused: any, color: any, size: any) => {
-  let iconName;
-
-  if (route.name === "Players") {
-    iconName = focused ? "account-group" : "account-group-outline";
-  } else if (route.name === "Coaches") {
-    iconName = focused ? "whistle" : "whistle-outline";
-  } else if (route.name === "Tournaments") {
-    iconName = focused ? "trophy" : "trophy-outline";
-  }
-
-  return <Icon name={iconName ?? ""} size={size} color={color} />;
+    const [outlineIcon, filledIcon] = iconMap[route.name] || ["", ""];
+    const iconName = focused ? filledIcon : outlineIcon;
+    return <Icon name={iconName} size={size} color={color}/>;
 };
 
 export default function AdminNavigator() {

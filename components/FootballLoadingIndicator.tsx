@@ -1,7 +1,13 @@
-import React from 'react';
-import { View, Text, Image, StyleSheet, Animated, Easing } from 'react-native';
+import React from "react";
+import { View, Text, Image, StyleSheet, Animated, Easing } from "react-native";
 
-const FootballLoadingIndicator = () => {
+const FootballLoadingIndicator = ({
+  size,
+  color,
+}: {
+  size: "small" | "big";
+  color: string;
+}) => {
   const spinValue = new Animated.Value(0);
 
   React.useEffect(() => {
@@ -17,7 +23,7 @@ const FootballLoadingIndicator = () => {
 
   const spin = spinValue.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
+    outputRange: ["0deg", "360deg"],
   });
 
   return (
@@ -25,10 +31,16 @@ const FootballLoadingIndicator = () => {
       <Animated.View style={{ transform: [{ rotate: spin }] }}>
         <Image
           source={require("../assets/football-icon.png")}
-          style={styles.football}
+          style={[
+            styles.football,
+            {
+              width: size === "small" ? 30 : 80,
+              height: size === "small" ? 30 : 80,
+            },
+          ]}
         />
       </Animated.View>
-      <Text style={styles.loadingText}>Loading</Text>
+      <Text style={[styles.loadingText, { color }]}>Loading</Text>
     </View>
   );
 };
@@ -36,19 +48,17 @@ const FootballLoadingIndicator = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: "center",
+    alignItems: "center",
+    // backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   football: {
-    width: 80,
-    height: 80,
     marginBottom: 20,
   },
   loadingText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
 });
 

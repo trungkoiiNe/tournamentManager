@@ -1,27 +1,30 @@
 import React, { useEffect, useState } from "react";
 import {
-  Alert,
   Dimensions,
   Image,
   Modal,
   ScrollView,
+  SectionList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import CustomActivityIndicator from "../components/CustomActivityIndicator";
 import { FlatList } from "react-native-gesture-handler";
+import { ActivityIndicator } from "react-native-paper";
 
+import { alert } from "@baronha/ting";
 import { MaterialIcons } from "@expo/vector-icons";
 import CheckBox from "@react-native-community/checkbox";
 import { Picker } from "@react-native-picker/picker";
 import { LinearGradient } from "expo-linear-gradient";
+import GroupsTable from "../components/GroupsTable";
 import { useAuthStore } from "../store/authStore";
 import { useStore } from "../store/store";
-import { alert } from "@baronha/ting";
+import FootballLoadingIndicator from "../components/FootballLoadingIndicator";
 // import { FlatList } from "react-native-gesture-handler";
 const { width } = Dimensions.get("window");
-
 export default function TournamentDetail({ route, navigation }) {
   const { tournamentId } = route.params;
   const {
@@ -32,6 +35,7 @@ export default function TournamentDetail({ route, navigation }) {
     fetchPrizes,
     fetchRegisteredTeams,
     registeredTeams,
+    fetchTournamentSchedules,
   } = useStore();
   const { user } = useAuthStore();
   const [prizes, setPrizes] = useState([]);
@@ -42,6 +46,15 @@ export default function TournamentDetail({ route, navigation }) {
   const [teamSelectionModalVisible, setTeamSelectionModalVisible] =
     useState(false);
   const [teamsModalVisible, setTeamsModalVisible] = useState(false);
+  const [schedules, setSchedules] = useState([]);
+  const [schedulesModalVisible, setSchedulesModalVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const getSchedules = async () => {
+    setLoading(true);
+    const fetchedSchedules = await fetchTournamentSchedules(tournamentId);
+    setSchedules(fetchedSchedules);
+    setLoading(false);
+  };
 
   const tournament = tournaments.find((t) => t.id === tournamentId);
   const blankImageUrl =
@@ -54,7 +67,7 @@ export default function TournamentDetail({ route, navigation }) {
       setPrizes(fetchedPrizes);
     };
     loadPrizes();
-
+    console.log(tournament.groups);
     if (user && user.role === "coach") {
       fetchTeamsSpecifiedCoachId(user.email);
     }
@@ -74,10 +87,24 @@ export default function TournamentDetail({ route, navigation }) {
   const navigateTo = (screen: string) => {
     if (screen === "Teams") {
       setTeamsModalVisible(true);
+    } else if (screen === "Schedule") {
+      const groupA = tournament.groups[0];
+      // const teamNames = groupA.teams.map((team) => team.teamName);
+      // console.log(teamNames);
+      // console.log(JSON.stringify(tournament.groups));
+      // console.log(JSON.stringify(tournament.groups[0].teams));
+      getSchedules();
+      setSchedulesModalVisible(true);
     } else {
       navigation.navigate(screen, { tournamentId });
     }
   };
+  const DetailItem = ({ icon, text }) => (
+    <View style={styles.detailItem}>
+      <MaterialIcons name={icon} size={24} color="#3498db" />
+      <Text style={styles.detailText}>{text}</Text>
+    </View>
+  );
   const handleJoinTournament = async () => {
     if (!selectedTeam || !isAgreed) {
       alert({
@@ -114,7 +141,155 @@ export default function TournamentDetail({ route, navigation }) {
       }
     }
   };
+  const renderScheduleItem = ({
+    item,
+    index,
+    section,
+  }: {
+    item: any;
+    index: number;
+    section: any;
+  }) => (
+    <View>
+      {index === 0 && (
+        <View style={styles.roundHeader}>
+          <Text style={styles.roundHeaderText}>Round {section.round}</Text>
+        </View>
+      )}
+      <View style={styles.scheduleItem}>
+        <Text style={styles.scheduleGroup}>{item.group || "-"}</Text>
+        <Text style={styles.scheduleTeam}>{item.team1.teamName}</Text>
+        <Text style={styles.scheduleScore}>{item.score1 || "-"}</Text>
+        <Text style={styles.scheduleVs}>vs</Text>
+        <Text style={styles.scheduleScore}>{item.score2 || "-"}</Text>
+        <Text style={styles.scheduleTeam}>{item.team2.teamName}</Text>
+        <Text style={styles.scheduleTimestamp}>
+          {item.timestamp ? new Date(item.timestamp).toLocaleString() : "TBD"}
+        </Text>
+      </View>
+    </View>
+  );
 
+  const groupSchedulesByRound = (schedules: any) => {
+    const grouped = schedules.reduce((acc: any, schedule: any) => {
+      if (!acc[schedule.round]) {
+        acc[schedule.round] = [];
+      }
+      acc[schedule.round].push(schedule);
+      return acc;
+    }, {});
+
+    return Object.entries(grouped).map(([round, data]) => ({
+      round,
+      data,
+    }));
+  };
+  const renderItem = ({ item, section }) => {
+    switch (section.type) {
+      case "info":
+        return (
+          <View>
+            {/* Render tournament info */}
+            <Image
+              source={{ uri: tournament.bannerUrl }}
+              style={styles.banner}
+            />
+            <LinearGradient
+              colors={["rgba(0,0,0,0.8)", "transparent"]}
+              style={styles.gradient}
+            />
+            <View style={styles.infoContainer}>
+              <Image source={{ uri: tournament.logoUrl }} style={styles.logo} />
+              <Text style={styles.name}>{tournament.name}</Text>
+              <Text style={styles.date}>{`${startDate} - ${endDate}`}</Text>
+              <View style={styles.detailsContainer}>
+                <DetailItem
+                  icon="format-list-bulleted"
+                  text={`Format: ${tournament.format || "Not specified"}`}
+                />
+                <DetailItem
+                  icon="group"
+                  text={`Max Teams: ${
+                    tournament.numberOfTeams || "To be determined"
+                  }`}
+                />
+                <DetailItem
+                  icon="person"
+                  text={`Max Players per Team: ${
+                    tournament.maxPlayersPerTeam || "Not specified"
+                  }`}
+                />
+                <DetailItem
+                  icon="sports"
+                  text={`Max Coaches: ${
+                    tournament.maxCoaches || "To be determined"
+                  }`}
+                />
+                <DetailItem
+                  icon="repeat"
+                  text={`Rounds per Match: ${
+                    tournament.roundsPerMatch || "Not specified"
+                  }`}
+                />
+                <DetailItem
+                  icon="timer"
+                  text={`Time per Round: ${
+                    tournament.timePerRound
+                      ? `${tournament.timePerRound} minutes`
+                      : "To be determined"
+                  }`}
+                />
+                <DetailItem
+                  icon="emoji-events"
+                  text={`Prizes: ${
+                    prizes.length > 0
+                      ? prizes
+                          .map(
+                            (prize) =>
+                              `${prize.category}: ${
+                                prize.numberOfPrizes
+                              } x ${prize.moneyPerPrize.toLocaleString()} VND`
+                          )
+                          .join(", ")
+                      : "Not specified"
+                  }`}
+                />
+                {/* {tournament.groups && (
+                  <GroupsTable groups={tournament.groups} />
+                )} */}
+              </View>
+            </View>
+            <View style={styles.buttonContainer}>
+              {["Schedule", "Teams", "Statistics", "News"].map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  style={styles.button}
+                  onPress={() => navigateTo(item)}
+                >
+                  <Text style={styles.buttonText}>{item}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {user && user.role === "coach" && (
+              <TouchableOpacity
+                style={styles.joinButton}
+                onPress={() => setTeamSelectionModalVisible(true)}
+              >
+                <Text style={styles.joinButtonText}>Join Tournament</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        );
+      case "groups":
+        return <GroupsTable groups={tournament.groups} />;
+      default:
+        return null;
+    }
+  };
+  const sections = [
+    { type: "info", data: [{}] },
+    { type: "groups", data: [{}] },
+  ];
   const renderTeamItem = ({ item }: { item: Team }) => (
     <TouchableOpacity
       style={styles.teamItem}
@@ -138,78 +313,15 @@ export default function TournamentDetail({ route, navigation }) {
     </TouchableOpacity>
   );
   return (
-    <ScrollView style={styles.container}>
-      <Image source={{ uri: tournament.bannerUrl }} style={styles.banner} />
-      <LinearGradient
-        colors={["rgba(0,0,0,0.8)", "transparent"]}
-        style={styles.gradient}
+    <View style={styles.container}>
+      <SectionList
+        sections={sections}
+        renderItem={renderItem}
+        keyExtractor={(item, index) => index.toString()}
+        renderSectionHeader={() => null}
       />
-      <View style={styles.infoContainer}>
-        <Image source={{ uri: tournament.logoUrl }} style={styles.logo} />
-        <Text style={styles.name}>{tournament.name}</Text>
-        <Text style={styles.date}>{`${startDate} - ${endDate}`}</Text>
-        <View style={styles.detailsContainer}>
-          <DetailItem
-            icon="format-list-bulleted"
-            text={`Format: ${tournament.format || "Not specified"}`}
-          />
-          <DetailItem
-            icon="group"
-            text={`Max Teams: ${
-              tournament.numberOfTeams || "To be determined"
-            }`}
-          />
-          <DetailItem
-            icon="person"
-            text={`Max Players per Team: ${
-              tournament.maxPlayersPerTeam || "Not specified"
-            }`}
-          />
-          <DetailItem
-            icon="sports"
-            text={`Max Coaches: ${tournament.maxCoaches || "To be determined"}`}
-          />
-          <DetailItem
-            icon="repeat"
-            text={`Rounds per Match: ${
-              tournament.roundsPerMatch || "Not specified"
-            }`}
-          />
-          <DetailItem
-            icon="timer"
-            text={`Time per Round: ${
-              tournament.timePerRound
-                ? `${tournament.timePerRound} minutes`
-                : "To be determined"
-            }`}
-          />
-          <DetailItem
-            icon="emoji-events"
-            text={`Prizes: ${
-              prizes.length > 0
-                ? prizes
-                    .map(
-                      (prize) =>
-                        `${prize.category}: ${
-                          prize.numberOfPrizes
-                        } x ${prize.moneyPerPrize.toLocaleString()} VND`
-                    )
-                    .join(", ")
-                : "Not specified"
-            }`}
-          />
-        </View>
-      </View>
-      <View style={styles.buttonContainer}>
-        {[
-          "Schedule",
-          "Results",
-          "Ranking Board",
-          "Teams",
-          "Statistics",
-          // "Prizes",
-          "News",
-        ].map((item) => (
+      {/* <View style={styles.buttonContainer}>
+        {["Schedule", "Teams", "Statistics", "News"].map((item) => (
           <TouchableOpacity
             key={item}
             style={styles.button}
@@ -218,7 +330,7 @@ export default function TournamentDetail({ route, navigation }) {
             <Text style={styles.buttonText}>{item}</Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </View> */}
 
       {user && user.role === "coach" && (
         <TouchableOpacity
@@ -255,55 +367,6 @@ export default function TournamentDetail({ route, navigation }) {
         </View>
       </Modal>
 
-      {/* <Modal
-        animationType="slide"
-        transparent={true}
-        visible={teamSelectionModalVisible}
-        onRequestClose={() => setTeamSelectionModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select a Team</Text>
-            <FlatList
-              data={teams}
-              renderItem={renderTeamItem}
-              keyExtractor={(item) => item.id}
-              style={styles.teamList}
-            />
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => setTeamSelectionModalVisible(false)}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal> */}
-      {/*
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={teamsModalVisible}
-        onRequestClose={() => setTeamsModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Registered Teams</Text>
-            <FlatList
-              data={registeredTeams}
-              renderItem={renderTeamItem}
-              keyExtractor={(item) => item.id}
-              style={styles.teamList}
-            />
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setTeamsModalVisible(false)}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal> */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -349,17 +412,50 @@ export default function TournamentDetail({ route, navigation }) {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={schedulesModalVisible}
+        onRequestClose={() => setSchedulesModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Schedules</Text>
+            {loading ? (
+              <FootballLoadingIndicator size="small" color="black" />
+            ) : (
+              <>
+                {schedules.length > 0 ? (
+                  <SectionList
+                    sections={groupSchedulesByRound(schedules)}
+                    renderItem={renderScheduleItem}
+                    renderSectionHeader={({ section: { round } }) => (
+                      <View style={styles.roundHeader}>
+                        <Text style={styles.roundHeaderText}>
+                          Round {round}
+                        </Text>
+                      </View>
+                    )}
+                  />
+                ) : (
+                  <Text style={styles.noSchedulesText}>
+                    No schedules yet. Please check back later.
+                  </Text>
+                )}
+              </>
+            )}
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setSchedulesModalVisible(false)}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
-
-const DetailItem = ({ icon, text }) => (
-  <View style={styles.detailItem}>
-    <MaterialIcons name={icon} size={24} color="#3498db" />
-    <Text style={styles.detailText}>{text}</Text>
-  </View>
-);
-// ... (rest of the component code remains the same)
 
 const styles = StyleSheet.create({
   container: {
@@ -572,5 +668,69 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 100,
     borderRadius: 10,
+  },
+  scheduleItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ddd",
+    // flexDirection: "row",
+    // justifyContent: "space-between",
+    // alignItems: "center",
+    // padding: 10,
+    backgroundColor: "#fff",
+  },
+  groupItem: {
+    marginBottom: 20,
+  },
+  scheduleGroup: {
+    width: "10%",
+    textAlign: "center",
+    fontWeight: "bold",
+  },
+  scheduleTeam: {
+    width: "25%",
+    textAlign: "center",
+  },
+  scheduleScore: {
+    width: "10%",
+    textAlign: "center",
+    fontWeight: "bold",
+  },
+  scheduleVs: {
+    width: "10%",
+    textAlign: "center",
+    fontWeight: "bold",
+  },
+  scheduleTimestamp: {
+    width: "20%",
+    textAlign: "center",
+    fontSize: 12,
+  },
+  roundHeader: {
+    backgroundColor: "#f0f0f0",
+    padding: 10,
+    marginTop: 10,
+  },
+  roundHeaderText: {
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: "#e0e0e0",
+  },
+  sectionSeparator: {
+    height: 1,
+    backgroundColor: "#bdbdbd",
+    marginVertical: 5,
+  },
+  noSchedulesText: {
+    fontSize: 16,
+    textAlign: "center",
+    marginTop: 20,
   },
 });

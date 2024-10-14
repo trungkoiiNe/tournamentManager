@@ -100,7 +100,7 @@ const RegisterScreen = ({ navigation }: { navigation: any }) => {
           />
           <Text style={styles.title}>Join the Team</Text>
           {loading ? (
-            <FootballLoadingIndicator />
+            <FootballLoadingIndicator size="big"/>
           ) : (
             <>
               <TextInput

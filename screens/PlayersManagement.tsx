@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
+  Alert,
   FlatList,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
-  Alert,
+  View,
 } from "react-native";
 import { useStore } from "../store/store";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { Picker } from "@react-native-picker/picker";
-import { alert } from "@baronha/ting";
+import { toast } from "@baronha/ting";
+import FootballLoadingIndicator from "../components/FootballLoadingIndicator";
 
 export default function PlayersManagement() {
   const [name, setName] = useState("");
@@ -22,18 +22,20 @@ export default function PlayersManagement() {
 
   const { users, fetchUsers, addUser, updateUser, deleteUser } = useStore();
   const [selectedUserType, setSelectedUserType] = useState("all");
-
+  const [loading, setLoading] = useState(false);
   const filteredUsers = users.filter(
     (user) => selectedUserType === "all" || user.role === selectedUserType
   );
 
   useEffect(() => {
+    setLoading(true);
     fetchUsers();
+    setLoading(false);
   }, []);
 
   const handleAddUser = async () => {
     if (!name || !role || !stats) {
-      alert({
+      toast({
         title: "Error",
         message: "Please fill in all fields",
         preset: "error",
@@ -45,7 +47,7 @@ export default function PlayersManagement() {
     setRole("");
     setTeamId("");
     setStats("");
-    alert({
+    toast({
       title: "Success",
       message: "User added successfully",
       preset: "done",
@@ -53,7 +55,7 @@ export default function PlayersManagement() {
   };
 
   const handleUpdateUser = async (user) => {
-    alert({
+    toast({
       title: "Update User",
       message: "Implement update functionality",
       preset: "spinner",
@@ -168,11 +170,15 @@ export default function PlayersManagement() {
           </LinearGradient>
         </TouchableOpacity>
       </View>
-      <FlatList
-        data={filteredUsers}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-      />
+      {loading ? (
+        <FootballLoadingIndicator size="big" color="black" />
+      ) : (
+        <FlatList
+          data={filteredUsers}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+        />
+      )}
     </View>
   );
 }

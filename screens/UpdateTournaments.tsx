@@ -1,24 +1,25 @@
-import React, { useState, useCallback, useEffect, useMemo } from "react";
+import { alert, toast } from "@baronha/ting";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import firestore from "@react-native-firebase/firestore";
+import { Picker } from "@react-native-picker/picker";
+import React, { useCallback, useEffect, useState } from "react";
 import {
-  View,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Platform,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  Image,
-  Alert,
-  ActivityIndicator,
-  Platform,
-  FlatList,
+  View,
 } from "react-native";
-import { useStore } from "../store/store";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { Picker } from "@react-native-picker/picker";
-import firestore from "@react-native-firebase/firestore";
-import ImagePicker from "react-native-image-crop-picker";
 import { Card } from "react-native-elements";
-import { alert, toast } from "@baronha/ting";
+import ImagePicker from "react-native-image-crop-picker";
+import { useStore } from "../store/store";
+
+import Icon from "react-native-vector-icons/FontAwesome";
+import FootballLoadingIndicator from "../components/FootballLoadingIndicator";
 const UpdateTournament = ({ route, navigation }) => {
   const { tournament } = route.params;
   const [tournamentData, setTournamentData] = useState({
@@ -34,6 +35,10 @@ const UpdateTournament = ({ route, navigation }) => {
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [demoSchedule, setDemoSchedule] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [matches, setMatches] = useState([]);
+  const [showMatchTimePicker, setShowMatchTimePicker] = useState(false);
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(null);
 
   const {
     updateTournament,
@@ -68,6 +73,13 @@ const UpdateTournament = ({ route, navigation }) => {
     ]);
   }, []);
 
+  // const updatePrize = useCallback((index, field, value) => {
+  //   setPrizes((prev) => {
+  //     const newPrizes = [...prev];
+  //     newPrizes[index][field] = value;
+  //     return newPrizes;
+  //   });
+  // }, []);
   const updatePrize = useCallback((index, field, value) => {
     setPrizes((prev) => {
       const newPrizes = [...prev];
@@ -103,7 +115,7 @@ const UpdateTournament = ({ route, navigation }) => {
       }
     } catch (error) {
       console.log("ImagePicker Error: ", error);
-      alert({
+      toast({
         title: "Error",
         message: "Failed to pick image. Please try again.",
         preset: "error",
@@ -130,9 +142,16 @@ const UpdateTournament = ({ route, navigation }) => {
         maxCoaches: parseInt(tournamentData.maxCoaches),
         roundsPerMatch: parseInt(tournamentData.roundsPerMatch),
         timePerRound: parseInt(tournamentData.timePerRound),
+        prizes: prizes,
+        groups: groups,
       };
-
-      await updateTournament(updatedTournament);
+      const updatedPrizes = prizes.map((prize: any) => ({
+        category: prize.category,
+        numberOfPrizes: parseInt(prize.numberOfPrizes),
+        moneyPerPrize: parseInt(prize.moneyPerPrize),
+      }));
+      // console.log(groups.map((group) => group.));
+      await updateTournament(updatedTournament, updatedPrizes, matches, groups);
 
       if (newBannerImage || newLogoImage) {
         await uploadTournamentImages(
@@ -166,8 +185,25 @@ const UpdateTournament = ({ route, navigation }) => {
     tournament.id,
     newBannerImage,
     newLogoImage,
+    prizes,
+    matches,
+    groups,
   ]);
-
+  const updateTeamStats = useCallback((groupName, teamId, newStats) => {
+    setGroups((prevGroups) => ({
+      ...prevGroups,
+      [groupName]: {
+        ...prevGroups[groupName],
+        teams: {
+          ...prevGroups[groupName].teams,
+          [teamId]: {
+            ...prevGroups[groupName].teams[teamId],
+            stats: newStats,
+          },
+        },
+      },
+    }));
+  }, []);
   const generateDemoSchedule = useCallback(() => {
     if (registeredTeams.length < 2) {
       alert({
@@ -179,6 +215,7 @@ const UpdateTournament = ({ route, navigation }) => {
     }
 
     let schedule = [];
+    setMatches([]); // Clear matches when generating a new schedule
 
     if (tournamentData.format === "roundRobin") {
       schedule = generateRoundRobinSchedule(registeredTeams);
@@ -189,16 +226,69 @@ const UpdateTournament = ({ route, navigation }) => {
     }
 
     setDemoSchedule(schedule);
+    setMatches(schedule);
   }, [registeredTeams, tournamentData.format]);
 
+  const calculateGroupStats = useCallback(() => {
+    const newGroups = groups.map((group) => {
+      const teamStats = {};
+      group.teams.forEach((team) => {
+        teamStats[team.id] = { P: 0, W: 0, D: 0, L: 0, GD: 0, Pts: 0 };
+      });
+
+      matches
+        .filter((match) => match.group === group.name)
+        .forEach((match) => {
+          if (match.score1 !== "" && match.score2 !== "") {
+            const score1 = parseInt(match.score1);
+            const score2 = parseInt(match.score2);
+            const team1 = teamStats[match.team1.id];
+            const team2 = teamStats[match.team2.id];
+
+            team1.P++;
+            team2.P++;
+            team1.GD += score1 - score2;
+            team2.GD += score2 - score1;
+
+            if (score1 > score2) {
+              team1.W++;
+              team2.L++;
+              team1.Pts += 3;
+            } else if (score2 > score1) {
+              team2.W++;
+              team1.L++;
+              team2.Pts += 3;
+            } else {
+              team1.D++;
+              team2.D++;
+              team1.Pts += 1;
+              team2.Pts += 1;
+            }
+          }
+        });
+
+      return {
+        ...group,
+        teams: group.teams.map((team) => ({
+          ...team,
+          stats: teamStats[team.id],
+        })),
+      };
+    });
+
+    setGroups(newGroups);
+  }, [groups, matches]);
   const generateRoundRobinSchedule = useCallback((teams) => {
     let schedule = [];
     for (let i = 0; i < teams.length - 1; i++) {
       for (let j = i + 1; j < teams.length; j++) {
         schedule.push({
           round: i + 1,
-          team1: teams[i].teamName,
-          team2: teams[j].teamName,
+          team1: teams[i],
+          team2: teams[j],
+          score1: "",
+          score2: "",
+          timestamp: null,
         });
       }
     }
@@ -216,14 +306,20 @@ const UpdateTournament = ({ route, navigation }) => {
         if (i + 1 < remainingTeams.length) {
           roundMatches.push({
             round: round,
-            team1: remainingTeams[i].teamName,
-            team2: remainingTeams[i + 1].teamName,
+            team1: remainingTeams[i],
+            team2: remainingTeams[i + 1],
+            score1: "",
+            score2: "",
+            timestamp: null,
           });
         } else {
           roundMatches.push({
             round: round,
-            team1: remainingTeams[i].teamName,
-            team2: "BYE",
+            team1: remainingTeams[i],
+            team2: { teamName: "BYE" },
+            score1: "",
+            score2: "",
+            timestamp: null,
           });
         }
       }
@@ -234,395 +330,517 @@ const UpdateTournament = ({ route, navigation }) => {
 
     return schedule;
   }, []);
+  const generateKnockoutMatches = useCallback(() => {
+    // Calculate points for each team
+    const teamPoints: { [key: string]: number } = {};
+    groups.forEach((group) => {
+      group.teams.forEach((team) => {
+        teamPoints[team.id] = 0;
+      });
+    });
+
+    matches.forEach((match) => {
+      if (match.score1 !== "" && match.score2 !== "") {
+        const score1 = parseInt(match.score1);
+        const score2 = parseInt(match.score2);
+        if (score1 > score2) {
+          teamPoints[match.team1.id] += 3;
+        } else if (score2 > score1) {
+          teamPoints[match.team2.id] += 3;
+        } else {
+          teamPoints[match.team1.id] += 1;
+          teamPoints[match.team2.id] += 1;
+        }
+      }
+    });
+
+    // Get top two teams from each group
+    const knockoutTeams = groups.flatMap((group) =>
+      group.teams
+        .sort((a, b) => teamPoints[b.id] - teamPoints[a.id])
+        .slice(0, 2)
+    );
+
+    // Generate knockout matches
+    const knockoutMatches = generateKnockoutSchedule(knockoutTeams);
+    setMatches((prevMatches) => [...prevMatches, ...knockoutMatches]);
+  }, [groups, matches, generateKnockoutSchedule]);
+
   const generateGroupKnockoutSchedule = useCallback(
     (teams) => {
       const numberOfGroups = Math.min(Math.floor(teams.length / 3), 4);
-      const groups = Array.from({ length: numberOfGroups }, (_, i) => ({
+      const newGroups = Array.from({ length: numberOfGroups }, (_, i) => ({
         name: String.fromCharCode(65 + i),
         teams: [],
       }));
 
       // Distribute teams to groups
       teams.forEach((team, index) => {
-        groups[index % numberOfGroups].teams.push(team);
+        newGroups[index % numberOfGroups].teams.push(team);
       });
 
+      setGroups(newGroups);
+
       // Generate group stage matches
-      const groupStage = groups.flatMap((group) =>
+      const groupMatches = newGroups.flatMap((group) =>
         generateRoundRobinSchedule(group.teams).map((match) => ({
           ...match,
           group: group.name,
         }))
       );
 
-      // Generate knockout stage (simplified)
-      const knockoutTeams = groups.flatMap((group) => group.teams.slice(0, 2));
-      const knockoutStage = generateKnockoutSchedule(knockoutTeams);
-
-      return { groups, groupStage, knockoutStage };
+      return groupMatches;
     },
-    [generateRoundRobinSchedule, generateKnockoutSchedule]
+    [generateRoundRobinSchedule]
   );
+
+  const swapTeams = useCallback(
+    (groupIndex1, teamIndex1, groupIndex2, teamIndex2) => {
+      setGroups((prevGroups) => {
+        const newGroups = [...prevGroups];
+        const temp = newGroups[groupIndex1].teams[teamIndex1];
+        newGroups[groupIndex1].teams[teamIndex1] =
+          newGroups[groupIndex2].teams[teamIndex2];
+        newGroups[groupIndex2].teams[teamIndex2] = temp;
+        return newGroups;
+      });
+    },
+    []
+  );
+  const generateMatches = useCallback(() => {
+    const newMatches = groups.flatMap((group) =>
+      generateRoundRobinSchedule(group.teams).map((match) => ({
+        ...match,
+        group: group.name,
+        timestamp: null,
+        score1: "",
+        score2: "",
+      }))
+    );
+    setMatches(newMatches);
+    calculateGroupStats();
+  }, [groups, generateRoundRobinSchedule, calculateGroupStats]);
+  const updateMatchResult = useCallback(
+    (index, field, value) => {
+      setMatches((prevMatches) => {
+        const newMatches = [...prevMatches];
+        newMatches[index][field] = value;
+        return newMatches;
+      });
+      calculateGroupStats();
+    },
+    [calculateGroupStats]
+  );
+  const updateMatchTimestamp = useCallback((index, timestamp) => {
+    setMatches((prevMatches) => {
+      const newMatches = [...prevMatches];
+      newMatches[index].timestamp = timestamp;
+      return newMatches;
+    });
+  }, []);
   const renderGroupStage = useCallback(
-    ({ groups, groupStage }) => (
+    () => (
       <View>
         <Text style={styles.stageHeader}>Group Stage</Text>
-        {groups.map((group) => (
+        {groups.map((group, groupIndex) => (
           <View key={group.name} style={styles.groupContainer}>
             <Text style={styles.groupHeader}>Group {group.name}</Text>
-            {group.teams.map((team) => (
-              <Text key={team.id} style={styles.groupTeam}>
-                {team.teamName}
-              </Text>
+            <View style={styles.statsHeader}>
+              <Text style={styles.statsHeaderText}>Team</Text>
+              <Text style={styles.statsHeaderText}>P</Text>
+              <Text style={styles.statsHeaderText}>W</Text>
+              <Text style={styles.statsHeaderText}>D</Text>
+              <Text style={styles.statsHeaderText}>L</Text>
+              <Text style={styles.statsHeaderText}>GD</Text>
+              <Text style={styles.statsHeaderText}>Pts</Text>
+            </View>
+            {group.teams.map((team, teamIndex) => (
+              <View key={team.id} style={styles.groupTeamContainer}>
+                <Text style={styles.groupTeam}>{team.teamName}</Text>
+                {team.stats && (
+                  <>
+                    <Text style={styles.statText}>{team.stats.P}</Text>
+                    <Text style={styles.statText}>{team.stats.W}</Text>
+                    <Text style={styles.statText}>{team.stats.D}</Text>
+                    <Text style={styles.statText}>{team.stats.L}</Text>
+                    <Text style={styles.statText}>{team.stats.GD}</Text>
+                    <Text style={styles.statText}>{team.stats.Pts}</Text>
+                  </>
+                )}
+                <TouchableOpacity
+                  onPress={() => {
+                    const nextGroupIndex = (groupIndex + 1) % groups.length;
+                    swapTeams(groupIndex, teamIndex, nextGroupIndex, 0);
+                  }}
+                >
+                  <Icon name="exchange" size={20} color="#3498db" />
+                </TouchableOpacity>
+              </View>
             ))}
           </View>
         ))}
-        <Text style={styles.subHeader}>Group Matches</Text>
-        {groupStage.map((match) => (
-          <View key={`${match.team1}-${match.team2}`} style={styles.matchItem}>
-            <Text style={styles.matchGroup}>Group {match.group}</Text>
-            <Text style={styles.matchTeams}>
-              {match.team1} vs {match.team2}
-            </Text>
-          </View>
-        ))}
+        <TouchableOpacity
+          style={styles.generateButton}
+          onPress={generateMatches}
+        >
+          <Text style={styles.generateButtonText}>Generate Matches</Text>
+        </TouchableOpacity>
       </View>
     ),
-    []
+    [groups, swapTeams, generateMatches]
   );
 
-  const renderKnockoutStage = useCallback(
-    (knockoutStage) => (
+  const renderMatches = useCallback(() => {
+    if (!matches || matches.length === 0) {
+      return <Text>No matches generated yet.</Text>;
+    }
+    return (
       <View>
-        <Text style={styles.stageHeader}>Knockout Stage</Text>
-        {knockoutStage.map((match) => (
-          <View key={`${match.team1}-${match.team2}`} style={styles.matchItem}>
+        <Text style={styles.stageHeader}>Matches</Text>
+        {matches.map((match, index) => (
+          <View key={index} style={styles.matchItem}>
+            {match.group && (
+              <Text style={styles.matchGroup}>Group {match.group}</Text>
+            )}
             <Text style={styles.matchRound}>Round {match.round}</Text>
             <Text style={styles.matchTeams}>
-              {match.team1} vs {match.team2}
+              {match.team1.teamName} vs {match.team2.teamName}
             </Text>
+            <View style={styles.matchResultContainer}>
+              <TextInput
+                style={styles.scoreInput}
+                value={match.score1}
+                onChangeText={(value) =>
+                  updateMatchResult(index, "score1", value)
+                }
+                keyboardType="numeric"
+              />
+              <Text style={styles.scoreSeparator}>-</Text>
+              <TextInput
+                style={styles.scoreInput}
+                value={match.score2}
+                onChangeText={(value) =>
+                  updateMatchResult(index, "score2", value)
+                }
+                keyboardType="numeric"
+              />
+              <TouchableOpacity
+                onPress={() => {
+                  setCurrentMatchIndex(index);
+                  setShowMatchTimePicker(true);
+                }}
+              >
+                <Icon name="calendar" size={20} color="#3498db" />
+              </TouchableOpacity>
+            </View>
+            {match.timestamp && (
+              <Text style={styles.matchTimestamp}>
+                {new Date(match.timestamp).toLocaleString()}
+              </Text>
+            )}
           </View>
         ))}
-      </View>
-    ),
-    []
-  );
-
-  const renderSchedule = useMemo(() => {
-    if (
-      !demoSchedule ||
-      (Array.isArray(demoSchedule) && demoSchedule.length === 0)
-    )
-      return null;
-
-    if (tournamentData.format === "groupKnockout") {
-      return (
-        <ScrollView>
-          {renderGroupStage(demoSchedule)}
-          {renderKnockoutStage(demoSchedule.knockoutStage)}
-        </ScrollView>
-      );
-    } else {
-      return (
-        <FlatList
-          data={demoSchedule}
-          keyExtractor={(item, index) => `${item.round}-${index}`}
-          renderItem={({ item }) => (
-            <View style={styles.matchItem}>
-              <Text style={styles.matchRound}>Round {item.round}</Text>
-              <Text style={styles.matchTeams}>
-                {item.team1} vs {item.team2}
-              </Text>
-            </View>
+        {showMatchTimePicker &&
+          currentMatchIndex !== null &&
+          matches[currentMatchIndex] && (
+            <DateTimePicker
+              value={
+                currentMatchIndex !== null && matches[currentMatchIndex]
+                  ? matches[currentMatchIndex].timestamp || new Date()
+                  : new Date()
+              }
+              mode="datetime"
+              isVisible={showMatchTimePicker}
+              // is24Hour={true}
+              display="default"
+              onChange={(event, selectedDate) => {
+                setShowMatchTimePicker(false);
+                if (selectedDate && currentMatchIndex !== null) {
+                  updateMatchTimestamp(
+                    currentMatchIndex,
+                    selectedDate.getTime()
+                  );
+                }
+              }}
+            />
           )}
-        />
-      );
-    }
+      </View>
+    );
   }, [
-    demoSchedule,
-    tournamentData.format,
-    renderGroupStage,
-    renderKnockoutStage,
+    matches,
+    showMatchTimePicker,
+    currentMatchIndex,
+    updateMatchResult,
+    updateMatchTimestamp,
   ]);
-
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={styles.loadingText}>Updating tournament...</Text>
+        <FootballLoadingIndicator size="big" color="black" />
+        {/* <Text style={styles.loadingText}>Updating tournament...</Text> */}
       </View>
     );
   }
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.header}>Update Tournament</Text>
-
-      <TouchableOpacity
-        style={styles.imageButton}
-        onPress={() => pickImage("banner")}
-      >
-        <Text style={styles.imageButtonText}>Update Banner Image</Text>
-      </TouchableOpacity>
-      {(newBannerImage || tournamentData.bannerUrl) && (
-        <Image
-          source={{
-            uri: newBannerImage
-              ? newBannerImage.path
-              : tournamentData.bannerUrl,
-          }}
-          style={styles.previewImage}
-        />
-      )}
-
-      <TouchableOpacity
-        style={styles.imageButton}
-        onPress={() => pickImage("logo")}
-      >
-        <Text style={styles.imageButtonText}>Update Logo Image</Text>
-      </TouchableOpacity>
-      {(newLogoImage || tournamentData.logoUrl) && (
-        <Image
-          source={{
-            uri: newLogoImage ? newLogoImage.path : tournamentData.logoUrl,
-          }}
-          style={styles.previewImage}
-        />
-      )}
-
-      <TextInput
-        style={styles.input}
-        placeholder="Tournament Name"
-        placeholderTextColor="#999"
-        value={tournamentData.name}
-        onChangeText={(value) => handleInputChange("name", value)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Purpose"
-        placeholderTextColor="#999"
-        value={tournamentData.purpose}
-        onChangeText={(value) => handleInputChange("purpose", value)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Number of Teams"
-        placeholderTextColor="#999"
-        value={tournamentData.numberOfTeams.toString()}
-        onChangeText={(value) => handleInputChange("numberOfTeams", value)}
-        keyboardType="numeric"
-      />
-      <TouchableOpacity
-        style={styles.dateButton}
-        onPress={() => setShowStartDatePicker(true)}
-      >
-        <Text style={styles.dateButtonText}>
-          Start Date: {tournamentData.startDate.toLocaleDateString()}
-        </Text>
-      </TouchableOpacity>
-      {showStartDatePicker && (
-        <DateTimePicker
-          value={tournamentData.startDate}
-          mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={(event, selectedDate) =>
-            onChangeDate("startDate", event, selectedDate)
-          }
-        />
-      )}
-
-      <TouchableOpacity
-        style={styles.dateButton}
-        onPress={() => setShowEndDatePicker(true)}
-      >
-        <Text style={styles.dateButtonText}>
-          End Date: {tournamentData.endDate.toLocaleDateString()}
-        </Text>
-      </TouchableOpacity>
-      {showEndDatePicker && (
-        <DateTimePicker
-          value={tournamentData.endDate}
-          mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={(event, selectedDate) =>
-            onChangeDate("endDate", event, selectedDate)
-          }
-        />
-      )}
-      <TextInput
-        style={styles.input}
-        placeholder="Location"
-        placeholderTextColor="#999"
-        value={tournamentData.location}
-        onChangeText={(value) => handleInputChange("location", value)}
-      />
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={tournamentData.format}
-          onValueChange={(itemValue) => handleInputChange("format", itemValue)}
-          style={styles.picker}
-        >
-          <Picker.Item label="Select Format" value="" />
-          <Picker.Item label="Round Robin" value="roundRobin" />
-          <Picker.Item label="Knockout" value="knockout" />
-          <Picker.Item label="Group Stage + Knockout" value="groupKnockout" />
-        </Picker>
-      </View>
-      <TextInput
-        style={styles.input}
-        placeholder="Budget"
-        placeholderTextColor="#999"
-        value={tournamentData.budget.toString()}
-        onChangeText={(value) => handleInputChange("budget", value)}
-        keyboardType="numeric"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Organizers (comma-separated)"
-        placeholderTextColor="#999"
-        value={
-          Array.isArray(tournamentData.organizers)
-            ? tournamentData.organizers.join(",")
-            : tournamentData.organizers
-        }
-        onChangeText={(value) => handleInputChange("organizers", value)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Sponsors (comma-separated)"
-        placeholderTextColor="#999"
-        value={
-          Array.isArray(tournamentData.sponsors)
-            ? tournamentData.sponsors.join(",")
-            : tournamentData.sponsors
-        }
-        onChangeText={(value) => handleInputChange("sponsors", value)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Max Players per Team"
-        placeholderTextColor="#999"
-        value={tournamentData.maxPlayersPerTeam.toString()}
-        onChangeText={(value) => handleInputChange("maxPlayersPerTeam", value)}
-        keyboardType="numeric"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Max Coaches"
-        placeholderTextColor="#999"
-        value={tournamentData.maxCoaches.toString()}
-        onChangeText={(value) => handleInputChange("maxCoaches", value)}
-        keyboardType="numeric"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Rounds per Match"
-        placeholderTextColor="#999"
-        value={tournamentData.roundsPerMatch.toString()}
-        onChangeText={(value) => handleInputChange("roundsPerMatch", value)}
-        keyboardType="numeric"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Time per Round (in minutes)"
-        placeholderTextColor="#999"
-        value={tournamentData.timePerRound.toString()}
-        onChangeText={(value) => handleInputChange("timePerRound", value)}
-        keyboardType="numeric"
-      />
-      <Text style={styles.sectionHeader}>Prizes</Text>
-      {prizes.map((prize) => (
-        <Card key={prize.id} containerStyle={styles.prizeContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Prize Category"
-            placeholderTextColor="#999"
-            value={prize.category}
-            onChangeText={(text) => updatePrize(prize.id, "category", text)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Number of Prizes"
-            placeholderTextColor="#999"
-            value={prize.numberOfPrizes.toString()}
-            onChangeText={(text) =>
-              updatePrize(prize.id, "numberOfPrizes", text)
-            }
-            keyboardType="numeric"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Money per Prize"
-            placeholderTextColor="#999"
-            value={prize.moneyPerPrize.toString()}
-            onChangeText={(text) =>
-              updatePrize(prize.id, "moneyPerPrize", text)
-            }
-            keyboardType="numeric"
-          />
-        </Card>
-      ))}
-
-      <TouchableOpacity style={styles.addButton} onPress={addPrize}>
-        <Text style={styles.addButtonText}>Add Prize</Text>
-      </TouchableOpacity>
-      {/*
-      <Text style={styles.sectionHeader}>Registered Teams</Text>
-      <FlatList
-        data={registeredTeams}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <Text style={styles.teamItem}>{item.teamName}</Text>
-        )}
-        ListEmptyComponent={<Text>No teams have joined yet.</Text>}
-      /> */}
-      {/*
-      <TouchableOpacity
-        style={styles.generateButton}
-        onPress={generateDemoSchedule}
-      >
-        <Text style={styles.generateButtonText}>Generate Demo Schedule</Text>
-      </TouchableOpacity>
-
-      {demoSchedule.length > 0 && (
+    <FlatList
+      ListHeaderComponent={
         <>
-          <Text style={styles.sectionHeader}>Demo Schedule</Text>
-          <FlatList
-            data={demoSchedule}
-            keyExtractor={(item, index) => `${item.round}-${index}`}
-            renderItem={renderSchedule}
+          <Text style={styles.header}>Update Tournament</Text>
+
+          <TouchableOpacity
+            style={styles.imageButton}
+            onPress={() => pickImage("banner")}
+          >
+            <Text style={styles.imageButtonText}>Update Banner Image</Text>
+          </TouchableOpacity>
+          {(newBannerImage || tournamentData.bannerUrl) && (
+            <Image
+              source={{
+                uri: newBannerImage
+                  ? newBannerImage.path
+                  : tournamentData.bannerUrl,
+              }}
+              style={styles.previewImage}
+            />
+          )}
+
+          <TouchableOpacity
+            style={styles.imageButton}
+            onPress={() => pickImage("logo")}
+          >
+            <Text style={styles.imageButtonText}>Update Logo Image</Text>
+          </TouchableOpacity>
+          {(newLogoImage || tournamentData.logoUrl) && (
+            <Image
+              source={{
+                uri: newLogoImage ? newLogoImage.path : tournamentData.logoUrl,
+              }}
+              style={styles.previewImage}
+            />
+          )}
+
+          <TextInput
+            style={styles.input}
+            placeholder="Tournament Name"
+            placeholderTextColor="#999"
+            value={tournamentData.name}
+            onChangeText={(value) => handleInputChange("name", value)}
           />
+          <TextInput
+            style={styles.input}
+            placeholder="Purpose"
+            placeholderTextColor="#999"
+            value={tournamentData.purpose}
+            onChangeText={(value) => handleInputChange("purpose", value)}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Number of Teams"
+            placeholderTextColor="#999"
+            value={tournamentData.numberOfTeams.toString()}
+            onChangeText={(value) => handleInputChange("numberOfTeams", value)}
+            keyboardType="numeric"
+          />
+          <TouchableOpacity
+            style={styles.dateButton}
+            onPress={() => setShowStartDatePicker(true)}
+          >
+            <Text style={styles.dateButtonText}>
+              Start Date: {tournamentData.startDate.toLocaleDateString()}
+            </Text>
+          </TouchableOpacity>
+          {showStartDatePicker && (
+            <DateTimePicker
+              value={tournamentData.startDate}
+              mode="date"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onChange={(event, selectedDate) =>
+                onChangeDate("startDate", event, selectedDate)
+              }
+            />
+          )}
+
+          <TouchableOpacity
+            style={styles.dateButton}
+            onPress={() => setShowEndDatePicker(true)}
+          >
+            <Text style={styles.dateButtonText}>
+              End Date: {tournamentData.endDate.toLocaleDateString()}
+            </Text>
+          </TouchableOpacity>
+          {showEndDatePicker && (
+            <DateTimePicker
+              value={tournamentData.endDate}
+              mode="date"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onChange={(event, selectedDate) =>
+                onChangeDate("endDate", event, selectedDate)
+              }
+            />
+          )}
+          <TextInput
+            style={styles.input}
+            placeholder="Location"
+            placeholderTextColor="#999"
+            value={tournamentData.location}
+            onChangeText={(value) => handleInputChange("location", value)}
+          />
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={tournamentData.format}
+              onValueChange={(itemValue) =>
+                handleInputChange("format", itemValue)
+              }
+              style={styles.picker}
+            >
+              <Picker.Item label="Select Format" value="" />
+              <Picker.Item label="Round Robin" value="roundRobin" />
+              <Picker.Item label="Knockout" value="knockout" />
+              <Picker.Item
+                label="Group Stage + Knockout"
+                value="groupKnockout"
+              />
+            </Picker>
+          </View>
+          <TextInput
+            style={styles.input}
+            placeholder="Budget"
+            placeholderTextColor="#999"
+            value={tournamentData.budget.toString()}
+            onChangeText={(value) => handleInputChange("budget", value)}
+            keyboardType="numeric"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Organizers (comma-separated)"
+            placeholderTextColor="#999"
+            value={
+              Array.isArray(tournamentData.organizers)
+                ? tournamentData.organizers.join(",")
+                : tournamentData.organizers
+            }
+            onChangeText={(value) => handleInputChange("organizers", value)}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Sponsors (comma-separated)"
+            placeholderTextColor="#999"
+            value={
+              Array.isArray(tournamentData.sponsors)
+                ? tournamentData.sponsors.join(",")
+                : tournamentData.sponsors
+            }
+            onChangeText={(value) => handleInputChange("sponsors", value)}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Max Players per Team"
+            placeholderTextColor="#999"
+            value={tournamentData.maxPlayersPerTeam.toString()}
+            onChangeText={(value) =>
+              handleInputChange("maxPlayersPerTeam", value)
+            }
+            keyboardType="numeric"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Max Coaches"
+            placeholderTextColor="#999"
+            value={tournamentData.maxCoaches.toString()}
+            onChangeText={(value) => handleInputChange("maxCoaches", value)}
+            keyboardType="numeric"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Rounds per Match"
+            placeholderTextColor="#999"
+            value={tournamentData.roundsPerMatch.toString()}
+            onChangeText={(value) => handleInputChange("roundsPerMatch", value)}
+            keyboardType="numeric"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Time per Round (in minutes)"
+            placeholderTextColor="#999"
+            value={tournamentData.timePerRound.toString()}
+            onChangeText={(value) => handleInputChange("timePerRound", value)}
+            keyboardType="numeric"
+          />
+          <Text style={styles.sectionHeader}>Prizes</Text>
+          {prizes.map((prize, index) => (
+            <Card key={index} containerStyle={styles.prizeContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="Prize Category"
+                placeholderTextColor="#999"
+                value={prize.category}
+                onChangeText={(text) => updatePrize(index, "category", text)}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Number of Prizes"
+                placeholderTextColor="#999"
+                value={prize.numberOfPrizes.toString()}
+                onChangeText={(text) =>
+                  updatePrize(index, "numberOfPrizes", text)
+                }
+                keyboardType="numeric"
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Money per Prize"
+                placeholderTextColor="#999"
+                value={prize.moneyPerPrize.toString()}
+                onChangeText={(text) =>
+                  updatePrize(index, "moneyPerPrize", text)
+                }
+                keyboardType="numeric"
+              />
+            </Card>
+          ))}
+
+          <TouchableOpacity style={styles.addButton} onPress={addPrize}>
+            <Text style={styles.addButtonText}>Add Prize</Text>
+          </TouchableOpacity>
         </>
-      )} */}
+      }
+      data={registeredTeams}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => (
+        <Text style={styles.teamItem}>{item.teamName}</Text>
+      )}
+      ListEmptyComponent={<Text>No teams have joined yet.</Text>}
+      ListFooterComponent={
+        <>
+          <TouchableOpacity
+            style={styles.generateButton}
+            onPress={generateDemoSchedule}
+          >
+            <Text style={styles.generateButtonText}>Generate Schedule</Text>
+          </TouchableOpacity>
 
-      <Text style={styles.sectionHeader}>Registered Teams</Text>
-      <FlatList
-        data={registeredTeams}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <Text style={styles.teamItem}>{item.teamName}</Text>
-        )}
-        ListEmptyComponent={<Text>No teams have joined yet.</Text>}
-      />
+          {tournamentData.format === "groupKnockout" &&
+            groups.length > 0 &&
+            renderGroupStage()}
+          {matches.length > 0 && renderMatches()}
 
-      <TouchableOpacity
-        style={styles.generateButton}
-        onPress={generateDemoSchedule}
-      >
-        <Text style={styles.generateButtonText}>Generate Demo Schedule</Text>
-      </TouchableOpacity>
+          {tournamentData.format === "groupKnockout" && matches.length > 0 && (
+            <TouchableOpacity
+              style={styles.generateButton}
+              onPress={generateKnockoutMatches}
+            >
+              <Text style={styles.generateButtonText}>
+                Generate Knockout Matches
+              </Text>
+            </TouchableOpacity>
+          )}
 
-      {demoSchedule &&
-        (Array.isArray(demoSchedule) ? demoSchedule.length > 0 : true) && (
-          <>
-            <Text style={styles.sectionHeader}>Demo Schedule</Text>
-            {renderSchedule}
-          </>
-        )}
-
-      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-        <Text style={styles.submitButtonText}>Update Tournament</Text>
-      </TouchableOpacity>
-    </ScrollView>
+          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+            <Text style={styles.submitButtonText}>Update Tournament</Text>
+          </TouchableOpacity>
+        </>
+      }
+    />
   );
 };
 
@@ -817,6 +1035,49 @@ const styles = StyleSheet.create({
   matchTeams: {
     fontSize: 16,
     marginTop: 5,
+  },
+  groupTeamContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginLeft: 10,
+    marginBottom: 5,
+  },
+  scoreInput: {
+    width: 40,
+    height: 40,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 5,
+    textAlign: "center",
+  },
+  scoreSeparator: {
+    marginHorizontal: 10,
+  },
+  matchResultContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    // justifyContent: 'centerTop'
+  },
+  matchTimestamp: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 5,
+  },
+  statsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 5,
+    paddingHorizontal: 10,
+  },
+  statsHeaderText: {
+    fontWeight: "bold",
+    width: 30,
+    textAlign: "center",
+  },
+  statText: {
+    width: 30,
+    textAlign: "center",
   },
 });
 

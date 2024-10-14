@@ -1,12 +1,11 @@
+import {createBottomTabNavigator} from "@react-navigation/bottom-tabs";
 import React from "react";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Provider as PaperProvider } from "react-native-paper";
+import {Provider as PaperProvider} from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import ProfileRouter from "../routers/ProfileRouter";
-import CoachDashboard from "../screens/CoachDashboard";
-import TeamDetail from "../screens/TeamDetail";
-import TeamRouter from "../routers/TeamRouter";
 import HomeRouter from "../routers/HomeRouter";
+import ProfileRouter from "../routers/ProfileRouter";
+import TeamRouter from "../routers/TeamRouter";
+
 const Tab = createBottomTabNavigator();
 export default function CoachNavigator() {
   return (

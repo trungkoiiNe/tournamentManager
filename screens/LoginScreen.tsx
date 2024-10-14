@@ -1,16 +1,9 @@
-import React, { useState } from "react";
-import {
-  View,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Text,
-  ImageBackground,
-  Image,
-} from "react-native";
-import { useAuthStore } from "../store/authStore";
+import React, {useState} from "react";
+import {Image, ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity, View,} from "react-native";
+import {useAuthStore} from "../store/authStore";
 import FootballLoadingIndicator from "../components/FootballLoadingIndicator";
-import { alert, toast } from "@baronha/ting";
+import {alert} from "@baronha/ting";
+
 const LoginScreen = ({ navigation }: { navigation: any }) => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -18,7 +11,7 @@ const LoginScreen = ({ navigation }: { navigation: any }) => {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const login = useAuthStore((state) => state.login);
-  const user = useAuthStore((state) => state.user);
+  // const user = useAuthStore((state) => state.user);
   const validateEmail = (email: string) => {
     // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const rg = /[A-Z0-9._%+-]+@[A-Z0-9-]+.+.[A-Z]{2,4}/gim;
@@ -82,7 +75,7 @@ const LoginScreen = ({ navigation }: { navigation: any }) => {
       style={styles.backgroundImage}
     >
       {loading === true ? (
-        <FootballLoadingIndicator />
+        <FootballLoadingIndicator size="big"/>
       ) : (
         <View style={styles.overlay}>
           <View style={styles.container}>

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -12,11 +12,14 @@ import { useStore } from "../store/store";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { alert } from "@baronha/ting";
+import FootballLoadingIndicator from "../components/FootballLoadingIndicator";
 export default function TournamentsManagement({ navigation }) {
   const { tournaments, fetchTournaments, deleteTournament } = useStore();
-
+  const [loading, setLoading] = useState(false);
   useEffect(() => {
+    setLoading(true);
     fetchTournaments();
+    setLoading(false);
   }, []);
 
   const handleDeleteTournament = async (id: string) => {
@@ -86,12 +89,15 @@ export default function TournamentsManagement({ navigation }) {
           <Text style={styles.buttonText}>Add New Tournament</Text>
         </LinearGradient>
       </TouchableOpacity>
-      <FlatList
-        data={tournaments}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
-      />
+      {loading ? (
+        <FootballLoadingIndicator size="big" color="black" />
+      ) : (
+        <FlatList
+          data={tournaments}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+        />
+      )}
     </View>
   );
 }
