@@ -1,6 +1,6 @@
-import {createBottomTabNavigator} from "@react-navigation/bottom-tabs";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import React from "react";
-import {Provider as PaperProvider} from "react-native-paper";
+import { Provider as PaperProvider } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import HomeRouter from "../routers/HomeRouter";
 import ProfileRouter from "../routers/ProfileRouter";
@@ -15,12 +15,12 @@ export default function CoachNavigator() {
           tabBarIcon: ({ focused, color, size }) => {
             let iconName;
 
-            if (route.name === "Players") {
-              iconName = focused ? "account-group" : "account-group-outline";
-            } else if (route.name === "Coaches") {
-              iconName = focused ? "whistle" : "whistle-outline";
-            } else if (route.name === "Tournaments") {
-              iconName = focused ? "trophy" : "trophy-outline";
+            if (route.name === "Home") {
+              iconName = focused ? "home" : "home-outline";
+            } else if (route.name === "Profile") {
+              iconName = focused ? "account" : "account-outline";
+            } else if (route.name === "Dashboard") {
+              iconName = focused ? "view-dashboard" : "view-dashboard-outline";
             }
 
             return <Icon name={iconName ?? ""} size={size} color={color} />;
@@ -29,7 +29,7 @@ export default function CoachNavigator() {
         })}
       >
         <Tab.Screen name="Home" component={HomeRouter} />
-        <Tab.Screen name="Dashboard" component={TeamRouter}  />
+        <Tab.Screen name="Dashboard" component={TeamRouter} />
         <Tab.Screen name="Profile" component={ProfileRouter} />
       </Tab.Navigator>
     </PaperProvider>

@@ -4,10 +4,10 @@ import {useAuthStore} from "../store/authStore";
 import firestore from "@react-native-firebase/firestore";
 import storage from "@react-native-firebase/storage";
 
-export default function PlayerDashboard({navigation}) {
+export default function PlayerDashboard({ navigation }: { navigation: any }) {
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
-    const [profile, setProfile] = useState(null);
+    const [profile, setProfile] = useState<any>(null);
 
     useEffect(() => {
         let unsubscribe: () => void;
@@ -17,7 +17,7 @@ export default function PlayerDashboard({navigation}) {
                 .doc(user?.email)
                 .onSnapshot((doc) => {
                     if (doc.exists) {
-                        setProfile(doc.data());
+                        setProfile(doc.data() as any);
                         // getAvatar();
                     }
                 });
@@ -43,7 +43,7 @@ export default function PlayerDashboard({navigation}) {
     useEffect(() => {
         const fetchAvatar = async () => {
             const url = await getAvatar();
-            setAvatarUrl(url);
+            setAvatarUrl(url as any);
         };
         fetchAvatar();
     }, [user]);

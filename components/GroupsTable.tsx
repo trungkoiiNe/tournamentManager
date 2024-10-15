@@ -41,15 +41,17 @@ const GroupsTable = ({ groups }: { groups: any }) => {
   }));
 
   return (
-    <>
-      {groups.length > 0 ? (
+    <View style={styles.container}>
+      {groupsArray.length > 0 ? (
         <FlatList
           data={groupsArray}
           keyExtractor={(item: any) => item.name}
           renderItem={renderGroup}
         />
-      ) : null}
-    </>
+      ) : (
+        <Text>No groups found</Text>
+      )}
+    </View>
   );
 };
 

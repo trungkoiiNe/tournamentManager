@@ -8,7 +8,7 @@ const Stack = createStackNavigator();
 
 const TournamentRouter = () => {
   return (
-    <Stack.Navigator initialRouteName="PlayerDashboard">
+    <Stack.Navigator initialRouteName="Tournaments">
       <Stack.Screen
         name="Tournaments"
         component={TournamentsManagement}

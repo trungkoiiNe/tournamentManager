@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 import {FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View,} from "react-native";
 import {useStore} from "../store/store";
 import FootballLoadingIndicator from "../components/FootballLoadingIndicator";
-const Home = ({navigation}) => {
+const Home = ({navigation}: {navigation: any}) => {
     const {tournaments, fetchTournaments} = useStore();
     const [searchQuery, setSearchQuery] = useState("");
     const [loading, setLoading] = useState(false);
@@ -58,7 +58,7 @@ const Home = ({navigation}) => {
                 numColumns={2}
                 columnWrapperStyle={styles.row}
             />
-            {loading && <FootballLoadingIndicator size="big"/>}
+            {loading && <FootballLoadingIndicator color="black" size="big"/>}
         </View>
     );
 };

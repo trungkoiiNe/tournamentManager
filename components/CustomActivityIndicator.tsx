@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Animated, Image, Easing } from 'react-native';
 
-const CustomActivityIndicator = ({ source }) => {
+const CustomActivityIndicator = ({ source }: { source: any }) => {
   const spinValue = new Animated.Value(0);
 
   useEffect(() => {

@@ -13,7 +13,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { alert } from "@baronha/ting";
 import FootballLoadingIndicator from "../components/FootballLoadingIndicator";
-export default function TournamentsManagement({ navigation }) {
+export default function TournamentsManagement({
+  navigation,
+}: Readonly<{ navigation: any }>) {
   const { tournaments, fetchTournaments, deleteTournament } = useStore();
   const [loading, setLoading] = useState(false);
   useEffect(() => {

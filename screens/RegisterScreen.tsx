@@ -4,7 +4,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   Text,
   ImageBackground,
   Image,
@@ -100,7 +99,7 @@ const RegisterScreen = ({ navigation }: { navigation: any }) => {
           />
           <Text style={styles.title}>Join the Team</Text>
           {loading ? (
-            <FootballLoadingIndicator size="big"/>
+            <FootballLoadingIndicator color="black" size="big"/>
           ) : (
             <>
               <TextInput

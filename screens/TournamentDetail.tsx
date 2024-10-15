@@ -25,7 +25,13 @@ import { useStore } from "../store/store";
 import FootballLoadingIndicator from "../components/FootballLoadingIndicator";
 // import { FlatList } from "react-native-gesture-handler";
 const { width } = Dimensions.get("window");
-export default function TournamentDetail({ route, navigation }) {
+export default function TournamentDetail({
+  route,
+  navigation,
+}: {
+  route: any;
+  navigation: any;
+}) {
   const { tournamentId } = route.params;
   const {
     tournaments,
@@ -38,7 +44,7 @@ export default function TournamentDetail({ route, navigation }) {
     fetchTournamentSchedules,
   } = useStore();
   const { user } = useAuthStore();
-  const [prizes, setPrizes] = useState([]);
+  const [prizes, setPrizes] = useState<any>([]);
   // const [modalVisible, setModalVisible] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState("");
   const [isAgreed, setIsAgreed] = useState(false);
@@ -52,7 +58,7 @@ export default function TournamentDetail({ route, navigation }) {
   const getSchedules = async () => {
     setLoading(true);
     const fetchedSchedules = await fetchTournamentSchedules(tournamentId);
-    setSchedules(fetchedSchedules);
+    setSchedules(fetchedSchedules as any);
     setLoading(false);
   };
 
@@ -88,7 +94,7 @@ export default function TournamentDetail({ route, navigation }) {
     if (screen === "Teams") {
       setTeamsModalVisible(true);
     } else if (screen === "Schedule") {
-      const groupA = tournament.groups[0];
+      // const groupA = tournament.groups[0];
       // const teamNames = groupA.teams.map((team) => team.teamName);
       // console.log(teamNames);
       // console.log(JSON.stringify(tournament.groups));
@@ -99,7 +105,7 @@ export default function TournamentDetail({ route, navigation }) {
       navigation.navigate(screen, { tournamentId });
     }
   };
-  const DetailItem = ({ icon, text }) => (
+  const DetailItem = ({ icon, text }: { icon: any; text: any }) => (
     <View style={styles.detailItem}>
       <MaterialIcons name={icon} size={24} color="#3498db" />
       <Text style={styles.detailText}>{text}</Text>
@@ -184,7 +190,7 @@ export default function TournamentDetail({ route, navigation }) {
       data,
     }));
   };
-  const renderItem = ({ item, section }) => {
+  const renderItem = ({ item, section }: { item: any; section: any }) => {
     switch (section.type) {
       case "info":
         return (
@@ -245,7 +251,7 @@ export default function TournamentDetail({ route, navigation }) {
                     prizes.length > 0
                       ? prizes
                           .map(
-                            (prize) =>
+                            (prize: any) =>
                               `${prize.category}: ${
                                 prize.numberOfPrizes
                               } x ${prize.moneyPerPrize.toLocaleString()} VND`
@@ -290,7 +296,7 @@ export default function TournamentDetail({ route, navigation }) {
     { type: "info", data: [{}] },
     { type: "groups", data: [{}] },
   ];
-  const renderTeamItem = ({ item }: { item: Team }) => (
+  const renderTeamItem = ({ item }: { item: any }) => (
     <TouchableOpacity
       style={styles.teamItem}
       // onPress={() => navigation.navigate("TeamDetail", { teamId: item.id })}
@@ -348,22 +354,20 @@ export default function TournamentDetail({ route, navigation }) {
         onRequestClose={() => setTeamsModalVisible(false)}
       >
         <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Registered Teams</Text>
-            <FlatList
-              data={registeredTeams}
-              renderItem={renderTeamItem}
-              keyExtractor={(item) => item.id}
-              numColumns={2}
-              columnWrapperStyle={styles.teamRow}
-            />
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setTeamsModalVisible(false)}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.modalTitle}>Registered Teams</Text>
+          <FlatList
+            data={registeredTeams}
+            renderItem={renderTeamItem}
+            keyExtractor={(item) => item.id}
+            numColumns={2}
+            columnWrapperStyle={styles.teamRow}
+          />
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setTeamsModalVisible(false)}
+          >
+            <Text style={styles.closeButtonText}>Close</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
 
@@ -427,7 +431,7 @@ export default function TournamentDetail({ route, navigation }) {
               <>
                 {schedules.length > 0 ? (
                   <SectionList
-                    sections={groupSchedulesByRound(schedules)}
+                    sections={groupSchedulesByRound(schedules) as any}
                     renderItem={renderScheduleItem}
                     renderSectionHeader={({ section: { round } }) => (
                       <View style={styles.roundHeader}>

@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useStore } from "../store/store";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
@@ -17,7 +18,7 @@ import firestore from "@react-native-firebase/firestore";
 import ImagePicker from "react-native-image-crop-picker";
 import { Card } from "react-native-elements";
 import { alert } from "@baronha/ting";
-const AddTournament = ({ navigation }) => {
+const AddTournament = ({ navigation }: any) => {
   const [tournamentData, setTournamentData] = useState({
     name: "",
     purpose: "",
@@ -29,8 +30,8 @@ const AddTournament = ({ navigation }) => {
     budget: "",
     organizers: "",
     sponsors: "",
-    bannerImage: null,
-    logoImage: null,
+    bannerImage: null as any,
+    logoImage: null as any,
     maxPlayersPerTeam: "",
     maxCoaches: "",
     roundsPerMatch: "",
@@ -47,12 +48,12 @@ const AddTournament = ({ navigation }) => {
 
   const { addTournament, uploadTournamentImages } = useStore();
 
-  const handleInputChange = useCallback((field, value) => {
-    setTournamentData((prev) => ({ ...prev, [field]: value }));
+  const handleInputChange = useCallback((field: any, value: any) => {
+    setTournamentData((prev: any) => ({ ...prev, [field]: value }));
   }, []);
 
   const onChangeDate = useCallback(
-    (field, event, selectedDate) => {
+    (field: any, event: any, selectedDate: any) => {
       if (selectedDate) {
         handleInputChange(field, selectedDate);
       }
@@ -64,7 +65,7 @@ const AddTournament = ({ navigation }) => {
   );
 
   const pickImage = useCallback(
-    async (type) => {
+    async (type: any) => {
       try {
         const image = await ImagePicker.openPicker({
           width: 300,
@@ -108,9 +109,9 @@ const AddTournament = ({ navigation }) => {
         scores: {},
       };
 
-      const result = await addTournament(newTournament, prizes);
+      const result = await addTournament(newTournament as any, prizes as any);
 
-      if (!result || !result.id) {
+      if (!result.id) {
         throw new Error("Failed to get tournament ID after adding");
       }
 
@@ -153,8 +154,8 @@ const AddTournament = ({ navigation }) => {
     ]);
   }, []);
 
-  const updatePrize = useCallback((index, field, value) => {
-    setPrizes((prev) => {
+  const updatePrize = useCallback((index: any, field: any, value: any) => {
+    setPrizes((prev: any) => {
       const newPrizes = [...prev];
       newPrizes[index][field] = value;
       return newPrizes;
@@ -169,205 +170,222 @@ const AddTournament = ({ navigation }) => {
       </View>
     );
   }
+  const Card = ({
+    children,
+    containerStyle,
+  }: {
+    children: any;
+    containerStyle: any;
+  }) => {
+    return <View style={containerStyle}>{children}</View>;
+  };
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.header}>Add New Tournament</Text>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      <ScrollView >
+        <Text style={styles.header}>Add New Tournament</Text>
 
-      <TouchableOpacity
-        style={styles.imageButton}
-        onPress={() => pickImage("banner")}
-      >
-        <Text style={styles.imageButtonText}>Select Banner Image</Text>
-      </TouchableOpacity>
-      {tournamentData.bannerImage && (
-        <Image
-          source={{ uri: tournamentData.bannerImage.path }}
-          style={styles.previewImage}
-        />
-      )}
-
-      <TouchableOpacity
-        style={styles.imageButton}
-        onPress={() => pickImage("logo")}
-      >
-        <Text style={styles.imageButtonText}>Select Logo Image</Text>
-      </TouchableOpacity>
-      {tournamentData.logoImage && (
-        <Image
-          source={{ uri: tournamentData.logoImage.path }}
-          style={styles.previewImage}
-        />
-      )}
-
-      <TextInput
-        style={styles.input}
-        placeholder="Tournament Name"
-        placeholderTextColor="#999"
-        value={tournamentData.name}
-        onChangeText={(value) => handleInputChange("name", value)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Purpose"
-        placeholderTextColor="#999"
-        value={tournamentData.purpose}
-        onChangeText={(value) => handleInputChange("purpose", value)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Number of Teams"
-        placeholderTextColor="#999"
-        value={tournamentData.numberOfTeams}
-        onChangeText={(value) => handleInputChange("numberOfTeams", value)}
-        keyboardType="numeric"
-      />
-      <TouchableOpacity
-        style={styles.dateButton}
-        onPress={() => setShowStartDatePicker(true)}
-      >
-        <Text style={styles.dateButtonText}>
-          Start Date: {tournamentData.startDate.toLocaleDateString()}
-        </Text>
-      </TouchableOpacity>
-      {showStartDatePicker && (
-        <DateTimePicker
-          value={tournamentData.startDate}
-          mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={(event, selectedDate) =>
-            onChangeDate("startDate", event, selectedDate)
-          }
-        />
-      )}
-
-      <TouchableOpacity
-        style={styles.dateButton}
-        onPress={() => setShowEndDatePicker(true)}
-      >
-        <Text style={styles.dateButtonText}>
-          End Date: {tournamentData.endDate.toLocaleDateString()}
-        </Text>
-      </TouchableOpacity>
-      {showEndDatePicker && (
-        <DateTimePicker
-          value={tournamentData.endDate}
-          mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={(event, selectedDate) =>
-            onChangeDate("endDate", event, selectedDate)
-          }
-        />
-      )}
-      <TextInput
-        style={styles.input}
-        placeholder="Location"
-        placeholderTextColor="#999"
-        value={tournamentData.location}
-        onChangeText={(value) => handleInputChange("location", value)}
-      />
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={tournamentData.format}
-          onValueChange={(itemValue) => handleInputChange("format", itemValue)}
-          style={styles.picker}
+        <TouchableOpacity
+          style={styles.imageButton}
+          onPress={() => pickImage("banner")}
         >
-          <Picker.Item label="Select Format" value="" />
-          <Picker.Item label="Round Robin" value="roundRobin" />
-          <Picker.Item label="Knockout" value="knockout" />
-          <Picker.Item label="Group Stage + Knockout" value="groupKnockout" />
-        </Picker>
-      </View>
-      <TextInput
-        style={styles.input}
-        placeholder="Budget"
-        placeholderTextColor="#999"
-        value={tournamentData.budget}
-        onChangeText={(value) => handleInputChange("budget", value)}
-        keyboardType="numeric"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Organizers (comma-separated)"
-        placeholderTextColor="#999"
-        value={tournamentData.organizers}
-        onChangeText={(value) => handleInputChange("organizers", value)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Sponsors (comma-separated)"
-        placeholderTextColor="#999"
-        value={tournamentData.sponsors}
-        onChangeText={(value) => handleInputChange("sponsors", value)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Max Players per Team"
-        placeholderTextColor="#999"
-        value={tournamentData.maxPlayersPerTeam}
-        onChangeText={(value) => handleInputChange("maxPlayersPerTeam", value)}
-        keyboardType="numeric"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Max Coaches"
-        placeholderTextColor="#999"
-        value={tournamentData.maxCoaches}
-        onChangeText={(value) => handleInputChange("maxCoaches", value)}
-        keyboardType="numeric"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Rounds per Match"
-        placeholderTextColor="#999"
-        value={tournamentData.roundsPerMatch}
-        onChangeText={(value) => handleInputChange("roundsPerMatch", value)}
-        keyboardType="numeric"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Time per Round (in minutes)"
-        placeholderTextColor="#999"
-        value={tournamentData.timePerRound}
-        onChangeText={(value) => handleInputChange("timePerRound", value)}
-        keyboardType="numeric"
-      />
-      <Text style={styles.sectionHeader}>Prizes</Text>
-      {prizes.map((prize, index) => (
-        <Card key={index} containerStyle={styles.prizeContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Prize Category"
-            placeholderTextColor="#999"
-            value={prize.category}
-            onChangeText={(text) => updatePrize(index, "category", text)}
+          <Text style={styles.imageButtonText}>Select Banner Image</Text>
+        </TouchableOpacity>
+        {tournamentData.bannerImage && (
+          <Image
+            source={{ uri: tournamentData.bannerImage.path }}
+            style={styles.previewImage}
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Number of Prizes"
-            placeholderTextColor="#999"
-            value={prize.numberOfPrizes}
-            onChangeText={(text) => updatePrize(index, "numberOfPrizes", text)}
-            keyboardType="numeric"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Money per Prize"
-            placeholderTextColor="#999"
-            value={prize.moneyPerPrize}
-            onChangeText={(text) => updatePrize(index, "moneyPerPrize", text)}
-            keyboardType="numeric"
-          />
-        </Card>
-      ))}
-      <TouchableOpacity style={styles.addButton} onPress={addPrize}>
-        <Text style={styles.addButtonText}>Add Prize</Text>
-      </TouchableOpacity>
+        )}
 
-      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-        <Text style={styles.submitButtonText}>Add Tournament</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <TouchableOpacity
+          style={styles.imageButton}
+          onPress={() => pickImage("logo")}
+        >
+          <Text style={styles.imageButtonText}>Select Logo Image</Text>
+        </TouchableOpacity>
+        {tournamentData.logoImage && (
+          <Image
+            source={{ uri: tournamentData.logoImage.path }}
+            style={styles.previewImage}
+          />
+        )}
+
+        <TextInput
+          style={styles.input}
+          placeholder="Tournament Name"
+          placeholderTextColor="#999"
+          value={tournamentData.name}
+          onChangeText={(value) => handleInputChange("name", value)}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Purpose"
+          placeholderTextColor="#999"
+          value={tournamentData.purpose}
+          onChangeText={(value) => handleInputChange("purpose", value)}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Number of Teams"
+          placeholderTextColor="#999"
+          value={tournamentData.numberOfTeams}
+          onChangeText={(value) => handleInputChange("numberOfTeams", value)}
+          keyboardType="numeric"
+        />
+        <TouchableOpacity
+          style={styles.dateButton}
+          onPress={() => setShowStartDatePicker(true)}
+        >
+          <Text style={styles.dateButtonText}>
+            Start Date: {tournamentData.startDate.toLocaleDateString()}
+          </Text>
+        </TouchableOpacity>
+        {showStartDatePicker && (
+          <DateTimePicker
+            value={tournamentData.startDate}
+            mode="date"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={(event, selectedDate) =>
+              onChangeDate("startDate", event, selectedDate)
+            }
+          />
+        )}
+
+        <TouchableOpacity
+          style={styles.dateButton}
+          onPress={() => setShowEndDatePicker(true)}
+        >
+          <Text style={styles.dateButtonText}>
+            End Date: {tournamentData.endDate.toLocaleDateString()}
+          </Text>
+        </TouchableOpacity>
+        {showEndDatePicker && (
+          <DateTimePicker
+            value={tournamentData.endDate}
+            mode="date"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={(event, selectedDate) =>
+              onChangeDate("endDate", event, selectedDate)
+            }
+          />
+        )}
+        <TextInput
+          style={styles.input}
+          placeholder="Location"
+          placeholderTextColor="#999"
+          value={tournamentData.location}
+          onChangeText={(value) => handleInputChange("location", value)}
+        />
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={tournamentData.format}
+            onValueChange={(itemValue) =>
+              handleInputChange("format", itemValue)
+            }
+            style={styles.picker}
+          >
+            <Picker.Item label="Select Format" value="" />
+            <Picker.Item label="Round Robin" value="roundRobin" />
+            <Picker.Item label="Knockout" value="knockout" />
+            <Picker.Item label="Group Stage + Knockout" value="groupKnockout" />
+          </Picker>
+        </View>
+        <TextInput
+          style={styles.input}
+          placeholder="Budget"
+          placeholderTextColor="#999"
+          value={tournamentData.budget}
+          onChangeText={(value) => handleInputChange("budget", value)}
+          keyboardType="numeric"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Organizers (comma-separated)"
+          placeholderTextColor="#999"
+          value={tournamentData.organizers}
+          onChangeText={(value) => handleInputChange("organizers", value)}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Sponsors (comma-separated)"
+          placeholderTextColor="#999"
+          value={tournamentData.sponsors}
+          onChangeText={(value) => handleInputChange("sponsors", value)}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Max Players per Team"
+          placeholderTextColor="#999"
+          value={tournamentData.maxPlayersPerTeam}
+          onChangeText={(value) =>
+            handleInputChange("maxPlayersPerTeam", value)
+          }
+          keyboardType="numeric"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Max Coaches"
+          placeholderTextColor="#999"
+          value={tournamentData.maxCoaches}
+          onChangeText={(value) => handleInputChange("maxCoaches", value)}
+          keyboardType="numeric"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Rounds per Match"
+          placeholderTextColor="#999"
+          value={tournamentData.roundsPerMatch}
+          onChangeText={(value) => handleInputChange("roundsPerMatch", value)}
+          keyboardType="numeric"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Time per Round (in minutes)"
+          placeholderTextColor="#999"
+          value={tournamentData.timePerRound}
+          onChangeText={(value) => handleInputChange("timePerRound", value)}
+          keyboardType="numeric"
+        />
+        <Text style={styles.sectionHeader}>Prizes</Text>
+        {prizes.map((prize, index) => (
+          <Card key={index} containerStyle={styles.prizeContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Prize Category"
+              placeholderTextColor="#999"
+              value={prize.category}
+              onChangeText={(text) => updatePrize(index, "category", text)}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Number of Prizes"
+              placeholderTextColor="#999"
+              value={prize.numberOfPrizes}
+              onChangeText={(text) =>
+                updatePrize(index, "numberOfPrizes", text)
+              }
+              keyboardType="numeric"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Money per Prize"
+              placeholderTextColor="#999"
+              value={prize.moneyPerPrize}
+              onChangeText={(text) => updatePrize(index, "moneyPerPrize", text)}
+              keyboardType="numeric"
+            />
+          </Card>
+        ))}
+        <TouchableOpacity style={styles.addButton} onPress={addPrize}>
+          <Text style={styles.addButtonText}>Add Prize</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+          <Text style={styles.submitButtonText}>Add Tournament</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 

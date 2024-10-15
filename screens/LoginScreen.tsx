@@ -75,7 +75,7 @@ const LoginScreen = ({ navigation }: { navigation: any }) => {
       style={styles.backgroundImage}
     >
       {loading === true ? (
-        <FootballLoadingIndicator size="big"/>
+        <FootballLoadingIndicator color="black" size="big"/>
       ) : (
         <View style={styles.overlay}>
           <View style={styles.container}>

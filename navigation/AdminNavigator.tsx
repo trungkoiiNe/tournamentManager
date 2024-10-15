@@ -22,8 +22,8 @@ const Stack = createStackNavigator(); // Create a StackNavigator instance
 const iconMap: { [key: string]: [string, string] } = {
     Players: ["account-group-outline", "account-group"],
     Coaches: ["whistle-outline", "whistle"],
-    Tournaments: ["soccer-outline", "soccer"],
-    Teams: ["soccer-outline", "soccer"],
+    Tournaments: ["trophy-outline", "trophy"],
+    Teams: ["account-group-outline", "account-group"],
     Profile: ["account-outline", "account"],
     Home: ["home-outline", "home"],
 };
@@ -47,8 +47,8 @@ export default function AdminNavigator() {
       >
         <Tab.Screen name="Home" component={HomeRouter} />
         <Tab.Screen name="Players" component={PlayersManagement} />
-        <Tab.Screen name="Tournamentss" component={TournamentRouter} />
-        <Tab.Screen name="TeamsManagement" component={TeamsManagement} />
+        <Tab.Screen name="Tournaments" component={TournamentRouter} />
+        <Tab.Screen name="Teams" component={TeamsManagement} />
         <Tab.Screen name="Profile" component={ProfileRouter} />
 
         {/* <Tab.Screen name="Dashboard" component={PlayerDashboard} /> */}

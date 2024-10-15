@@ -17,10 +17,9 @@ import FootballLoadingIndicator from "../components/FootballLoadingIndicator";
 export default function PlayersManagement() {
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
-  const [teamId, setTeamId] = useState("");
   const [stats, setStats] = useState("");
 
-  const { users, fetchUsers, addUser, updateUser, deleteUser } = useStore();
+  const { users, fetchUsers, addUser, deleteUser } = useStore();
   const [selectedUserType, setSelectedUserType] = useState("all");
   const [loading, setLoading] = useState(false);
   const filteredUsers = users.filter(
@@ -45,7 +44,7 @@ export default function PlayersManagement() {
     await addUser({ name, role, stats, teamId: "", email: "" });
     setName("");
     setRole("");
-    setTeamId("");
+    // setTeamId("");
     setStats("");
     toast({
       title: "Success",
@@ -54,7 +53,7 @@ export default function PlayersManagement() {
     });
   };
 
-  const handleUpdateUser = async (user) => {
+  const handleUpdateUser = async (user: any) => {
     toast({
       title: "Update User",
       message: "Implement update functionality",
@@ -62,7 +61,7 @@ export default function PlayersManagement() {
     });
   };
 
-  const handleDeleteUser = async (id) => {
+  const handleDeleteUser = async (id: any) => {
     Alert.alert("Delete User", "Are you sure you want to delete this user?", [
       { text: "Cancel", style: "cancel" },
       {
@@ -75,7 +74,7 @@ export default function PlayersManagement() {
     ]);
   };
 
-  const getRoleIcon = (role) => {
+  const getRoleIcon = (role: any) => {
     switch (role) {
       case "player":
         return "football-outline";
@@ -87,7 +86,7 @@ export default function PlayersManagement() {
         return "person-outline";
     }
   };
-  const renderItem = ({ item }) => (
+  const renderItem = ({ item }: { item: any }) => (
     <View style={styles.item}>
       <Text style={styles.itemText}>
         <Ionicons name={getRoleIcon(item.role)} size={16} color="#333" />{" "}
@@ -120,7 +119,7 @@ export default function PlayersManagement() {
     </View>
   );
 
-  const renderRoleOption = (roleValue, label) => (
+  const renderRoleOption = (roleValue: any, label: any) => (
     <TouchableOpacity
       style={styles.radioOption}
       onPress={() => setRole(roleValue)}

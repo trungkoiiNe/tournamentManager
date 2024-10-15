@@ -13,14 +13,13 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { MaterialIcons } from "@expo/vector-icons";
 import { useStore } from "../store/store";
 import { useAuthStore } from "../store/authStore";
 import { alert } from "@baronha/ting";
 
 const { width, height } = Dimensions.get("window");
 
-export default function TeamDetail({ route, navigation }) {
+export default function TeamDetail({ route , navigation }: any) {
   const { teamId } = route.params;
   const {
     teams,
@@ -30,12 +29,12 @@ export default function TeamDetail({ route, navigation }) {
     fetchTeams,
   } = useStore();
   const coachId = useAuthStore((state) => state.user?.email);
-  const [team, setTeam] = useState(null);
-  const [teamMembers, setTeamMembers] = useState([]);
+  const [team, setTeam] = useState(null as any);
+  const [teamMembers, setTeamMembers] = useState([] as any);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedPlayers, setSelectedPlayers] = useState([]);
-  const [allPlayers, setAllPlayers] = useState([]);
+  const [selectedPlayers, setSelectedPlayers] = useState([] as any);
+  const [allPlayers, setAllPlayers] = useState([] as any);
   const [loading, setLoading] = useState(true);
   const blankImageUrl =
     "https://firebasestorage.googleapis.com/v0/b/tournament-manager-d7665.appspot.com/o/noimages.png?alt=media&token=5dd2c160-9ea2-44b9-b913-5aba4f6fc3b8";
@@ -61,17 +60,17 @@ export default function TeamDetail({ route, navigation }) {
 
   const filteredPlayers = useMemo(() => {
     return allPlayers.filter(
-      (player) =>
-        !teamMembers.some((member) => member.id === player.id) &&
+      (player: any) =>
+        !teamMembers.some((member: any) => member.id === player.id) &&
         (player.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           player.email?.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   }, [allPlayers, teamMembers, searchQuery]);
 
-  const togglePlayerSelection = useCallback((playerId) => {
-    setSelectedPlayers((prev) =>
+  const togglePlayerSelection = useCallback((playerId: any) => {
+    setSelectedPlayers((prev: any) =>
       prev.includes(playerId)
-        ? prev.filter((id) => id !== playerId)
+        ? prev.filter((id: any) => id !== playerId)
         : [...prev, playerId]
     );
   }, []);
@@ -130,7 +129,7 @@ export default function TeamDetail({ route, navigation }) {
 
       <View style={styles.membersContainer}>
         <Text style={styles.sectionTitle}>Team Members</Text>
-        {teamMembers.map((member) => (
+        {teamMembers.map((member: any) => (
           <Text key={member.id} style={styles.memberItem}>
             {member.name || "Unknown"} ({member.id || "Unknown"})
           </Text>

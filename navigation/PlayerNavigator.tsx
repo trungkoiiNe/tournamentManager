@@ -10,19 +10,21 @@ import HomeRouter from "../routers/HomeRouter";
 const Tab = createBottomTabNavigator();
 
 // Move the tabBarIcon function outside of the PlayerNavigator component
-const getTabBarIcon = (route: any) => ({ focused, color, size }: { focused: any, color: any, size: any }) => {
-  let iconName;
+const getTabBarIcon =
+  (route: any) =>
+  ({ focused, color, size }: { focused: any; color: any; size: any }) => {
+    let iconName;
 
-  if (route.name === "Players") {
-    iconName = focused ? "account-group" : "account-group-outline";
-  } else if (route.name === "Coaches") {
-    iconName = focused ? "whistle" : "whistle-outline";
-  } else if (route.name === "Tournaments") {
-    iconName = focused ? "trophy" : "trophy-outline";
-  }
+    if (route.name === "Home") {
+      iconName = focused ? "home" : "home-outline";
+    } else if (route.name === "Team") {
+      iconName = focused ? "account-group" : "account-group-outline";
+    } else if (route.name === "Dashboard") {
+      iconName = focused ? "trophy" : "trophy-outline";
+    }
 
-  return <Icon name={iconName ?? ""} size={size} color={color} />;
-};
+    return <Icon name={iconName ?? ""} size={size} color={color} />;
+  };
 function renderNotificationButton() {
   return <NotificationButton />;
 }

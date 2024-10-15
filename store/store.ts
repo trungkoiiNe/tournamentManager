@@ -453,8 +453,8 @@ export const useStore = create<Store>((set, get) => ({
       const batch = firestore().batch();
 
       // Update tournament data including groups with team stats
-      const updatedGroups = groups.reduce((acc, group) => {
-        acc[group.name] = group.teams.reduce((teamAcc, team) => {
+      const updatedGroups = groups.reduce((acc: any, group: any) => {
+        acc[group.name] = group.teams.reduce((teamAcc: any, team: any) => {
           if (team?.id && team?.teamName) {
             teamAcc[team.id] = {
               id: team.id,
@@ -469,9 +469,9 @@ export const useStore = create<Store>((set, get) => ({
 
       // Remove undefined values from tournament object
       const cleanTournament = Object.entries(tournament).reduce(
-        (acc, [key, value]) => {
+        (acc: any, [key, value]: any) => {
           if (value !== undefined) {
-            acc[key] = value;
+            acc[key]  = value;
           }
           return acc;
         },
@@ -1144,7 +1144,7 @@ const generateGroupKnockoutSchedule = (teams: Team[]): any[] => {
   const numberOfGroups = Math.min(Math.floor(teams.length / 3), 4);
   const groups = Array.from({ length: numberOfGroups }, (_, i) => ({
     name: String.fromCharCode(65 + i),
-    teams: [],
+    teams: [] as any,
   }));
 
   // Distribute teams to groups
