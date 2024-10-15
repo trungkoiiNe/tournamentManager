@@ -13,7 +13,7 @@ import firestore from "@react-native-firebase/firestore";
 import storage from "@react-native-firebase/storage";
 import ImagePicker from "react-native-image-crop-picker";
 import { alert } from "@baronha/ting";
-export default function EditProfile({ navigation }) {
+export default function EditProfile({ navigation }: any) {
   const user = useAuthStore((state) => state.user);
   const [profile, setProfile] = useState({
     name: "",
@@ -27,14 +27,14 @@ export default function EditProfile({ navigation }) {
   });
 
   useEffect(() => {
-    let unsubscribe;
+    let unsubscribe: any;
     if (user) {
       unsubscribe = firestore()
         .collection("TournamentManager")
         .doc(user?.email)
         .onSnapshot((doc) => {
           if (doc.exists) {
-            setProfile(doc.data());
+            setProfile(doc.data() as any);
           }
         });
     }

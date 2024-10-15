@@ -12,12 +12,15 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Animated,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+// import Icon from 'react-native-vector-icons/FontAwesome5';
 import { Card } from "react-native-elements";
 import ImagePicker from "react-native-image-crop-picker";
 import { useStore } from "../store/store";
 
-import Icon from "react-native-vector-icons/FontAwesome";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import FootballLoadingIndicator from "../components/FootballLoadingIndicator";
 import { SafeAreaView } from "react-native-safe-area-context";
 const UpdateTournament = ({
@@ -34,7 +37,6 @@ const UpdateTournament = ({
     endDate: tournament.endDate.toDate(),
   });
 
-  const [knockoutStage, setKnockoutStage] = useState("group");
   const [newBannerImage, setNewBannerImage] = useState<any>(null);
   const [newLogoImage, setNewLogoImage] = useState<any>(null);
   const [prizes, setPrizes] = useState([] as any);
@@ -46,6 +48,9 @@ const UpdateTournament = ({
   const [matches, setMatches] = useState<any>([]);
   const [showMatchTimePicker, setShowMatchTimePicker] = useState(false as any);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(null as any);
+  const [teamPositions] = useState(
+    groups.map((group: any) => group.teams.map(() => new Animated.Value(0)))
+  );
 
   const {
     updateTournament,
@@ -109,13 +114,8 @@ const UpdateTournament = ({
     fetchTournamentSchedules,
   ]);
 
-  const handleInputChange = useCallback((field: string, value: any) => {
-    console.log("field: ", field, "value: ", value);
-    setTournamentData((prev: any) => {
-      const updatedData = { ...prev, [field]: value };
-      console.log("Updated format:", updatedData.format);
-      return updatedData;
-    });
+  const handleInputChange = useCallback((field: any, value: any) => {
+    setTournamentData((prev: any) => ({ ...prev, [field]: value }));
   }, []);
 
   const addPrize = useCallback(() => {
@@ -124,6 +124,14 @@ const UpdateTournament = ({
       { category: "", numberOfPrizes: "", moneyPerPrize: "" },
     ]);
   }, []);
+
+  // const updatePrize = useCallback((index, field, value) => {
+  //   setPrizes((prev) => {
+  //     const newPrizes = [...prev];
+  //     newPrizes[index][field] = value;
+  //     return newPrizes;
+  //   });
+  // }, []);
   const updatePrize = useCallback((index: any, field: any, value: any) => {
     setPrizes((prev: any) => {
       const newPrizes = [...prev];
@@ -166,65 +174,6 @@ const UpdateTournament = ({
       });
     }
   }, []);
-  const generateRoundRobinSchedule = useCallback((teams: any) => {
-    let schedule: any[] = [];
-    const numRounds = teams.length - 1;
-    const numTeams = teams.length;
-
-    if (numTeams % 2 !== 0) {
-      teams.push({ teamName: "bye" });
-    }
-
-    for (let round = 0; round < numRounds; round++) {
-      for (let i = 0; i < numTeams / 2; i++) {
-        const team1 = teams[i];
-        const team2 = teams[numTeams - 1 - i];
-
-        if (team1.teamName !== "bye" && team2.teamName !== "bye") {
-          schedule.push({
-            round: round + 1,
-            team1: team1,
-            team2: team2,
-            score1: "",
-            score2: "",
-            timestamp: null,
-            group: "A", // All matches are in group A
-          });
-        }
-      }
-
-      const lastTeam = teams.pop();
-      teams.splice(1, 0, lastTeam);
-    }
-
-    return schedule;
-  }, []);
-  const generateGroupKnockoutSchedule = useCallback(
-    (teams: any) => {
-      const numberOfGroups = Math.min(Math.floor(teams.length / 3), 4);
-      const newGroups = Array.from({ length: numberOfGroups }, (_, i: any) => ({
-        name: String.fromCharCode(65 + i),
-        teams: [] as any,
-      }));
-
-      // Distribute teams to groups
-      teams.forEach((team: any, index: any) => {
-        newGroups[index % numberOfGroups].teams.push(team);
-      });
-
-      setGroups(newGroups);
-      const groupMatches = newGroups.flatMap((group: any) =>
-        generateRoundRobinSchedule(group.teams).map((match: any) => ({
-          ...match,
-          group: group.name,
-        }))
-      );
-      console.log(groupMatches);
-
-      return groupMatches;
-    },
-    [generateRoundRobinSchedule]
-  );
 
   const handleSubmit = useCallback(async () => {
     setIsLoading(true);
@@ -310,39 +259,145 @@ const UpdateTournament = ({
     },
     []
   );
+  const generateDemoSchedule = useCallback(() => {
+    if (registeredTeams.length < 2) {
+      alert({
+        title: "Error",
+        message: "Not enough teams to generate a schedule",
+        preset: "error",
+      });
+      return;
+    }
 
-  const generateKnockoutSchedule = useCallback((teams) => {
     let schedule = [];
+    setMatches([]); // Clear matches when generating a new schedule
+
+    if (tournamentData.format === "roundRobin") {
+      schedule = generateRoundRobinSchedule(registeredTeams);
+    } else if (tournamentData.format === "knockout") {
+      schedule = generateKnockoutSchedule(registeredTeams);
+    } else if (tournamentData.format === "groupKnockout") {
+      schedule = generateGroupKnockoutSchedule(registeredTeams);
+    }
+
+    setDemoSchedule(schedule);
+    setMatches(schedule);
+  }, [registeredTeams, tournamentData.format]);
+
+  const calculateGroupStats = useCallback(() => {
+    const newGroups = groups.map((group: any) => {
+      const teamStats: { [key: string]: any } = {};
+      group.teams.forEach((team: any) => {
+        teamStats[team.id] = { P: 0, W: 0, D: 0, L: 0, GD: 0, Pts: 0 };
+      });
+
+      matches
+        .filter((match: any) => match.group === group.name)
+        .forEach((match: any) => {
+          if (match.score1 !== "" && match.score2 !== "") {
+            const score1 = parseInt(match.score1);
+            const score2 = parseInt(match.score2);
+            const team1 = teamStats[match.team1.id];
+            const team2 = teamStats[match.team2.id];
+
+            team1.P++;
+            team2.P++;
+            team1.GD += score1 - score2;
+            team2.GD += score2 - score1;
+
+            if (score1 > score2) {
+              team1.W++;
+              team2.L++;
+              team1.Pts += 3;
+            } else if (score2 > score1) {
+              team2.W++;
+              team1.L++;
+              team2.Pts += 3;
+            } else {
+              team1.D++;
+              team2.D++;
+              team1.Pts += 1;
+              team2.Pts += 1;
+            }
+          }
+        });
+
+      return {
+        ...group,
+        teams: group.teams.map((team: any) => ({
+          ...team,
+          stats: teamStats[team.id],
+        })),
+      };
+    });
+
+    setGroups(newGroups);
+  }, [groups, matches]);
+  const generateRoundRobinSchedule = useCallback((teams: any) => {
+    let schedule: any[] = [];
+    for (let i = 0; i < teams.length - 1; i++) {
+      for (let j = i + 1; j < teams.length; j++) {
+        schedule.push({
+          round: i + 1,
+          team1: teams[i],
+          team2: teams[j],
+          score1: "",
+          score2: "",
+          timestamp: null,
+        });
+      }
+    }
+    return schedule;
+  }, []);
+  const generateKnockoutSchedule = useCallback((teams: any) => {
+    // Step 1: Ensure the number of teams is a power of 2
+    let adjustedTeams = [...teams];
+    while (adjustedTeams.length & (adjustedTeams.length - 1 !== 0)) {
+      adjustedTeams.push({ teamName: "BYE" });
+    }
+
+    // Step 2: Shuffle the teams
+    for (let i = adjustedTeams.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [adjustedTeams[i], adjustedTeams[j]] = [
+        adjustedTeams[j],
+        adjustedTeams[i],
+      ];
+    }
+
+    let schedule: any = [];
     let round = 1;
-    let remainingTeams = [...teams];
+    let remainingTeams = adjustedTeams;
 
     while (remainingTeams.length > 1) {
       let roundMatches = [];
 
+      // Step 3: Create matchups
       for (let i = 0; i < remainingTeams.length; i += 2) {
-        if (i + 1 < remainingTeams.length) {
-          roundMatches.push({
-            round: round,
-            team1: remainingTeams[i],
-            team2: remainingTeams[i + 1],
-            score1: "",
-            score2: "",
-            timestamp: null,
-            group: "Knockout",
-          });
-        }
+        roundMatches.push({
+          round: round,
+          team1: remainingTeams[i],
+          team2: remainingTeams[i + 1],
+          score1: "",
+          score2: "",
+          timestamp: null,
+          group: "Knockout",
+        });
       }
 
       schedule = [...schedule, ...roundMatches];
+
+      // Step 4 & 5: Prepare for the next round
       remainingTeams = remainingTeams.filter((_, index) => index % 2 === 0);
       round++;
     }
 
+    // Step 6: The last team in remainingTeams is the champion
     return schedule;
   }, []);
 
   const generateKnockoutMatches = useCallback(() => {
-    // Tính điểm cho từng đội trong giai đoạn vòng bảng
+    // Calculate points for each team
     const teamPoints: { [key: string]: number } = {};
     groups.forEach((group: any) => {
       group.teams.forEach((team: any) => {
@@ -350,7 +405,6 @@ const UpdateTournament = ({
       });
     });
 
-    // Cập nhật điểm số từ các trận đấu đã diễn ra
     matches.forEach((match: any) => {
       if (match.score1 !== "" && match.score2 !== "") {
         const score1 = parseInt(match.score1);
@@ -366,117 +420,17 @@ const UpdateTournament = ({
       }
     });
 
-    // Lấy 2 đội đứng đầu từ mỗi nhóm để vào vòng knockout
+    // Get top two teams from each group
     const knockoutTeams = groups.flatMap((group: any) =>
       group.teams
         .sort((a: any, b: any) => teamPoints[b.id] - teamPoints[a.id])
         .slice(0, 2)
     );
 
-    // Khởi tạo danh sách các trận đấu knockout (chỉ vòng 1)
-    const initialKnockoutMatches = generateKnockoutSchedule(knockoutTeams);
-    setMatches((prevMatches: any) => [
-      ...prevMatches,
-      ...initialKnockoutMatches,
-    ]);
+    // Generate knockout matches
+    const knockoutMatches = generateKnockoutSchedule(knockoutTeams);
+    setMatches((prevMatches: any) => [...prevMatches, ...knockoutMatches]);
   }, [groups, matches, generateKnockoutSchedule]);
-
-  const generateDemoSchedule = useCallback(() => {
-    if (registeredTeams.length < 2) {
-      alert({
-        title: "Error",
-        message: "Not enough teams to generate a schedule",
-        preset: "error",
-      });
-      return;
-    }
-
-    let schedule = [];
-    setMatches([]); // Clear matches when generating a new schedule
-
-    if (
-      tournamentData.format === "roundRobin" ||
-      tournamentData.format === "knockout"
-    ) {
-      // For both round-robin and knockout, create a single group
-      const newGroups = [
-        {
-          name: "A",
-          teams: registeredTeams,
-        },
-      ];
-      setGroups(newGroups);
-
-      if (tournamentData.format === "roundRobin") {
-        schedule = generateRoundRobinSchedule(registeredTeams);
-      } else {
-        schedule = generateKnockoutSchedule(registeredTeams);
-      }
-    } else if (tournamentData.format === "groupKnockout") {
-      schedule = generateGroupKnockoutSchedule(registeredTeams);
-    }
-
-    setDemoSchedule(schedule);
-    setMatches(schedule);
-  }, [
-    registeredTeams,
-    tournamentData.format,
-    generateRoundRobinSchedule,
-    generateKnockoutSchedule,
-    generateGroupKnockoutSchedule,
-  ]);
-  const calculateGroupStats = useCallback(() => {
-    const newGroups = groups.map((group) => {
-      const teamStats = {};
-      group.teams.forEach((team) => {
-        teamStats[team.id] = { P: 0, W: 0, D: 0, L: 0, GD: 0, Pts: 0 };
-      });
-
-      matches
-        .filter((match) => match.group === group.name || match.group === "A")
-        .forEach((match) => {
-          if (match.score1 !== "" && match.score2 !== "") {
-            const score1 = parseInt(match.score1);
-            const score2 = parseInt(match.score2);
-            const team1 = teamStats[match.team1.id];
-            const team2 = teamStats[match.team2.id];
-
-            if (team1 && team2) {
-              team1.P++;
-              team2.P++;
-              team1.GD += score1 - score2;
-              team2.GD += score2 - score1;
-
-              if (score1 > score2) {
-                team1.W++;
-                team2.L++;
-                team1.Pts += 3;
-              } else if (score2 > score1) {
-                team2.W++;
-                team1.L++;
-                team2.Pts += 3;
-              } else {
-                team1.D++;
-                team2.D++;
-                team1.Pts += 1;
-                team2.Pts += 1;
-              }
-            }
-          }
-        });
-
-      return {
-        ...group,
-        teams: group.teams.map((team) => ({
-          ...team,
-          stats: teamStats[team.id],
-        })),
-      };
-    });
-
-    setGroups(newGroups);
-  }, [groups, matches]);
-
   const generateGroupMatches = (
     groups: any,
     generateRoundRobinSchedule: any
@@ -500,6 +454,33 @@ const UpdateTournament = ({
 
     return newGroups;
   };
+  const generateGroupKnockoutSchedule = useCallback(
+    (teams: any) => {
+      const numberOfGroups = Math.min(Math.floor(teams.length / 3), 4);
+      const newGroups = Array.from({ length: numberOfGroups }, (_, i: any) => ({
+        name: String.fromCharCode(65 + i),
+        teams: [] as any,
+      }));
+
+      // Distribute teams to groups
+      teams.forEach((team: any, index: any) => {
+        newGroups[index % numberOfGroups].teams.push(team);
+      });
+
+      setGroups(newGroups);
+
+      // Generate group stage matches
+      const groupMatches = newGroups.flatMap((group: any) =>
+        generateRoundRobinSchedule(group.teams).map((match: any) => ({
+          ...match,
+          group: group.name,
+        }))
+      );
+
+      return groupMatches;
+    },
+    [generateRoundRobinSchedule]
+  );
 
   const swapTeams = useCallback(
     (groupIndex1: any, teamIndex1: any, groupIndex2: any, teamIndex2: any) => {
@@ -515,77 +496,22 @@ const UpdateTournament = ({
     []
   );
   const generateMatches = useCallback(() => {
-    if (registeredTeams.length < 2) {
-      alert({
-        title: "Error",
-        message: "Not enough teams to generate a schedule",
-        preset: "error",
-      });
-      return;
-    }
-
-    let newMatches = [];
-    let newGroups = [];
-
-    if (tournamentData.format === "knockout") {
-      newMatches = generateKnockoutSchedule(registeredTeams);
-      newGroups = [{ name: "Knockout", teams: registeredTeams }];
-      setKnockoutStage("group");
-    } else if (tournamentData.format === "roundRobin") {
-      newGroups = [{ name: "A", teams: registeredTeams }];
-      newMatches = generateRoundRobinSchedule(registeredTeams);
-    } else if (tournamentData.format === "groupKnockout") {
-      const groupMatches = generateGroupKnockoutSchedule(registeredTeams);
-      newMatches = groupMatches;
-      newGroups = groups; // groups are already set in generateGroupKnockoutSchedule
-    }
-
+    const newMatches = generateGroupMatches(
+      groups,
+      generateRoundRobinSchedule
+    ).map((match: any) => ({
+      ...match,
+      timestamp: null,
+      score1: "",
+      score2: "",
+    }));
     setMatches(newMatches);
-    setGroups(newGroups);
     calculateGroupStats();
-  }, [
-    registeredTeams,
-    tournamentData.format,
-    generateKnockoutSchedule,
-    generateRoundRobinSchedule,
-    generateGroupKnockoutSchedule,
-    calculateGroupStats,
-  ]);
-
-  const calculateKnockoutAdvancement = useCallback(() => {
-    const currentRound = Math.max(...matches.map((match) => match.round));
-    const currentRoundMatches = matches.filter(
-      (match) => match.round === currentRound
-    );
-
-    const advancingTeams = currentRoundMatches.map((match) => {
-      const score1 = parseInt(match.score1);
-      const score2 = parseInt(match.score2);
-      return score1 > score2 ? match.team1 : match.team2;
-    });
-
-    if (advancingTeams.length > 1) {
-      const nextRoundMatches = generateKnockoutSchedule(advancingTeams);
-      setMatches((prevMatches) => [...prevMatches, ...nextRoundMatches]);
-    } else {
-      // Tournament is finished
-      alert({
-        title: "Tournament Finished",
-        message: `The winner is ${advancingTeams[0].teamName}!`,
-        preset: "done",
-      });
-    }
-
-    if (currentRound === 1) {
-      setKnockoutStage("semifinal");
-    } else if (currentRound === 2) {
-      setKnockoutStage("final");
-    }
-  }, [matches, generateKnockoutSchedule]);
+  }, [groups, generateRoundRobinSchedule, calculateGroupStats]);
 
   const updateMatchResult = useCallback(
-    (index, field, value) => {
-      setMatches((prevMatches) => {
+    (index: any, field: any, value: any) => {
+      setMatches((prevMatches: any) => {
         const newMatches = [...prevMatches];
         newMatches[index][field] = value;
         return newMatches;
@@ -602,70 +528,83 @@ const UpdateTournament = ({
     });
   }, []);
 
-  const renderKnockoutStage = useCallback(() => {
-    if (tournamentData.format !== "knockout") return null;
-
+  const renderGroupTeams = (group: any, groupIndex: any, swapTeams: any) => {
     return (
-      <View>
-        <Text style={styles.stageHeader}>Knockout Stage: {knockoutStage}</Text>
-        {knockoutStage !== "final" && (
+      <View style={styles.tableBody}>
+        {group.teams.map((team: any, teamIndex: any) => (
           <TouchableOpacity
-            style={styles.generateButton}
-            onPress={calculateKnockoutAdvancement}
+            key={team.id}
+            style={styles.tableRow}
+            onPress={() => {
+              /* Open detailed team view */
+            }}
           >
-            <Text style={styles.generateButtonText}>
-              Calculate {knockoutStage === "group" ? "Semifinal" : "Final"}{" "}
-              Advancement
+            <View style={[styles.tableCell, styles.teamColumn]}>
+              <Text style={styles.teamName}>{team.teamName}</Text>
+            </View>
+            <Text style={styles.tableCell}>{team.stats?.P || 0}</Text>
+            <View style={styles.tableCell}>
+              <Text>
+                {team.stats?.W || 0}{" "}
+                <Icon name="trophy" size={16} color="#FFD700" />
+              </Text>
+            </View>
+            <View style={styles.tableCell}>
+              <Text>
+                {team.stats?.D || 0}{" "}
+                <Icon name="equal" size={16} color="#A9A9A9" />
+              </Text>
+            </View>
+            <View style={styles.tableCell}>
+              <Text>
+                {team.stats?.L || 0}
+                <Icon name="close" size={16} color="#FF4500" />
+              </Text>
+            </View>
+            <Text style={styles.tableCell}>{team.stats?.GD || 0}</Text>
+            <Text style={[styles.tableCell, styles.points]}>
+              {team.stats?.Pts || 0}
             </Text>
+            <TouchableOpacity
+              style={styles.swapButton}
+              onPress={() => {
+                const nextGroupIndex = (groupIndex + 1) % groups.length;
+                swapTeams(groupIndex, teamIndex, nextGroupIndex, 0);
+              }}
+            >
+              <Icon name="swap-horizontal-bold" size={16} color="#ffffff" />
+            </TouchableOpacity>
           </TouchableOpacity>
-        )}
+        ))}
       </View>
     );
-  }, [tournamentData.format, knockoutStage, calculateKnockoutAdvancement]);
-  const renderGroupTeams = (group: any, groupIndex: any) => {
-    return group.teams.map((team: any, teamIndex: any) => (
-      <View key={team.id} style={styles.groupTeamContainer}>
-        <Text style={styles.groupTeam}>{team.teamName}</Text>
-        {team.stats && (
-          <>
-            <Text style={styles.statText}>{team.stats.P}</Text>
-            <Text style={styles.statText}>{team.stats.W}</Text>
-            <Text style={styles.statText}>{team.stats.D}</Text>
-            <Text style={styles.statText}>{team.stats.L}</Text>
-            <Text style={styles.statText}>{team.stats.GD}</Text>
-            <Text style={styles.statText}>{team.stats.Pts}</Text>
-          </>
-        )}
-        <TouchableOpacity
-          onPress={() => {
-            const nextGroupIndex = (groupIndex + 1) % groups.length;
-            swapTeams(groupIndex, teamIndex, nextGroupIndex, 0);
-          }}
-        >
-          <Icon name="exchange" size={20} color="#3498db" />
-        </TouchableOpacity>
-      </View>
-    ));
   };
+
   const renderGroupStage = useCallback(() => {
     if (tournamentData.format === "knockout") return null;
 
     return (
-      <View>
+      <View style={styles.groupStageContainer}>
         <Text style={styles.stageHeader}>
           {tournamentData.format === "roundRobin"
             ? "Round Robin"
             : "Group Stage"}
         </Text>
-        {groups.map((group, groupIndex) => (
-          <View key={group.name} style={styles.groupContainer}>
+        {groups.map((group: any, groupIndex: any) => (
+          <LinearGradient
+            key={group.name}
+            colors={["#f0f0f0", "#e0e0e0"]}
+            style={styles.groupContainer}
+          >
             <Text style={styles.groupHeader}>
               {tournamentData.format === "roundRobin"
                 ? "Teams"
                 : `Group ${group.name}`}
             </Text>
             <View style={styles.statsHeader}>
-              <Text style={styles.statsHeaderText}>Team</Text>
+              <Text style={[styles.statsHeaderText, styles.teamColumn]}>
+                Team
+              </Text>
               <Text style={styles.statsHeaderText}>P</Text>
               <Text style={styles.statsHeaderText}>W</Text>
               <Text style={styles.statsHeaderText}>D</Text>
@@ -673,107 +612,66 @@ const UpdateTournament = ({
               <Text style={styles.statsHeaderText}>GD</Text>
               <Text style={styles.statsHeaderText}>Pts</Text>
             </View>
-            {renderGroupTeams(group, groupIndex)}
-          </View>
+            {renderGroupTeams(group, groupIndex, swapTeams)}
+          </LinearGradient>
         ))}
       </View>
     );
-  }, [groups, tournamentData.format, renderGroupTeams]);
+  }, [groups, tournamentData.format, renderGroupTeams, swapTeams]);
   const renderMatches = useCallback(() => {
     if (!matches || matches.length === 0) {
       return <Text>No matches generated yet.</Text>;
     }
-
-    // Group matches by round
-    const matchesByRound = matches.reduce((acc: any, match: any) => {
-      if (!acc[match.round]) {
-        acc[match.round] = [];
-      }
-      acc[match.round].push(match);
-      return acc;
-    }, {});
-
     return (
-      <View>
-        <Text style={styles.stageHeader}>Matches</Text>
-        {Object.entries(matchesByRound).map(([round, roundMatches]) => (
-          <View key={round}>
-            <Text style={styles.roundHeader}>
-              {tournamentData.format === "knockout"
-                ? `${
-                    ["Round of 16", "Quarterfinals", "Semifinals", "Final"][
-                      parseInt(round) - 1
-                    ] || `Round ${round}`
-                  }`
-                : `Round ${round}`}
-            </Text>
-            {roundMatches.map((match: any, index: any) => (
-              <View key={`${round}-${index}`} style={styles.matchItem}>
-                {match.group && match.group !== "Knockout" && (
-                  <Text style={styles.matchGroup}>Group {match.group}</Text>
-                )}
-                <Text style={styles.matchTeams}>
-                  {match.team1.teamName} vs {match.team2.teamName}
-                </Text>
-                <View style={styles.matchResultContainer}>
-                  <TextInput
-                    style={styles.scoreInput}
-                    value={match.score1}
-                    onChangeText={(value) =>
-                      updateMatchResult(matches.indexOf(match), "score1", value)
-                    }
-                    keyboardType="numeric"
-                  />
-                  <Text style={styles.scoreSeparator}>-</Text>
-                  <TextInput
-                    style={styles.scoreInput}
-                    value={match.score2}
-                    onChangeText={(value) =>
-                      updateMatchResult(matches.indexOf(match), "score2", value)
-                    }
-                    keyboardType="numeric"
-                  />
-                  <TouchableOpacity
-                    onPress={() => {
-                      setCurrentMatchIndex(matches.indexOf(match));
-                      setShowMatchTimePicker(true);
-                    }}
-                  >
-                    <Icon name="calendar" size={20} color="#3498db" />
-                  </TouchableOpacity>
-                </View>
-                {match.timestamp && (
-                  <Text style={styles.matchTimestamp}>
-                    {new Date(match.timestamp).toLocaleString()}
-                  </Text>
-                )}
+      <View style={styles.cardContent}>
+        {matches.map((match: any, index: any) => (
+          <View key={index} style={styles.matchItem}>
+            <View style={styles.matchHeader}>
+              {match.group && (
+                <Text style={styles.matchGroup}>Group {match.group}</Text>
+              )}
+              <Text style={styles.matchRound}>Round {match.round}</Text>
+            </View>
+            <View style={styles.matchTeams}>
+              <Text style={styles.teamName}>{match.team1.teamName}</Text>
+              <View style={styles.scoreContainer}>
+                <TextInput
+                  style={styles.scoreInput}
+                  value={match.score1}
+                  onChangeText={(value) =>
+                    updateMatchResult(index, "score1", value)
+                  }
+                  keyboardType="numeric"
+                />
+                <Text style={styles.scoreSeparator}>-</Text>
+                <TextInput
+                  style={styles.scoreInput}
+                  value={match.score2}
+                  onChangeText={(value) =>
+                    updateMatchResult(index, "score2", value)
+                  }
+                  keyboardType="numeric"
+                />
               </View>
-            ))}
+              <Text style={styles.teamName}>{match.team2.teamName}</Text>
+            </View>
+            <View style={styles.matchFooter}>
+              <TouchableOpacity
+                onPress={() => {
+                  setCurrentMatchIndex(index);
+                  setShowMatchTimePicker(true);
+                }}
+              >
+                <Icon name="calendar" size={20} color="#3498db" />
+              </TouchableOpacity>
+              {match.timestamp && (
+                <Text style={styles.date}>
+                  {new Date(match.timestamp).toLocaleString()}
+                </Text>
+              )}
+            </View>
           </View>
         ))}
-        {showMatchTimePicker &&
-          currentMatchIndex !== null &&
-          matches[currentMatchIndex] && (
-            <DateTimePicker
-              value={
-                currentMatchIndex !== null && matches[currentMatchIndex]
-                  ? matches[currentMatchIndex].timestamp || new Date()
-                  : new Date()
-              }
-              mode="datetime"
-              isVisible={showMatchTimePicker}
-              display="default"
-              onChange={(event, selectedDate) => {
-                setShowMatchTimePicker(false);
-                if (selectedDate && currentMatchIndex !== null) {
-                  updateMatchTimestamp(
-                    currentMatchIndex,
-                    selectedDate.getTime()
-                  );
-                }
-              }}
-            />
-          )}
       </View>
     );
   }, [
@@ -782,9 +680,7 @@ const UpdateTournament = ({
     currentMatchIndex,
     updateMatchResult,
     updateMatchTimestamp,
-    tournamentData.format,
   ]);
-
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -1035,20 +931,17 @@ const UpdateTournament = ({
           <>
             <TouchableOpacity
               style={styles.generateButton}
-              onPress={generateMatches}
+              onPress={generateDemoSchedule}
             >
-              <Text style={styles.generateButtonText}>Generate Matches</Text>
+              <Text style={styles.generateButtonText}>Generate Schedule</Text>
             </TouchableOpacity>
 
-            {tournamentData.format === "knockout"
-              ? renderKnockoutStage()
-              : renderGroupStage()}
-
-            {matches.length > 0 ? (
-              renderMatches()
+            {tournamentData.format === "groupKnockout" && groups.length > 0 ? (
+              renderGroupStage()
             ) : (
               <FootballLoadingIndicator size="big" color="black" />
             )}
+            {matches.length > 0 && renderMatches()}
 
             {tournamentData.format === "groupKnockout" &&
               matches.length > 0 && (
@@ -1220,52 +1113,15 @@ const styles = StyleSheet.create({
   scheduleMatch: {
     fontSize: 14,
   },
-  stageHeader: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginTop: 20,
-    marginBottom: 10,
-  },
   subHeader: {
     fontSize: 18,
     fontWeight: "bold",
     marginTop: 15,
     marginBottom: 10,
   },
-  groupContainer: {
-    marginBottom: 15,
-    backgroundColor: "#f0f0f0",
-    padding: 10,
-    borderRadius: 5,
-  },
-  groupHeader: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
   groupTeam: {
     fontSize: 14,
     marginLeft: 10,
-  },
-  matchItem: {
-    marginBottom: 10,
-    padding: 10,
-    backgroundColor: "#f9f9f9",
-    borderRadius: 5,
-  },
-  matchGroup: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#666",
-  },
-  matchRound: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#666",
-  },
-  matchTeams: {
-    fontSize: 16,
-    marginTop: 5,
   },
   groupTeamContainer: {
     flexDirection: "row",
@@ -1274,17 +1130,9 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     marginBottom: 5,
   },
-  scoreInput: {
-    width: 40,
-    height: 40,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 5,
-    textAlign: "center",
-  },
-  scoreSeparator: {
-    marginHorizontal: 10,
-  },
+  //   scoreSeparator: {
+  //     marginHorizontal: 10,
+  //   },
   matchResultContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -1295,27 +1143,228 @@ const styles = StyleSheet.create({
     color: "#666",
     marginTop: 5,
   },
-  statsHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 5,
-    paddingHorizontal: 10,
-  },
-  statsHeaderText: {
-    fontWeight: "bold",
-    width: 30,
-    textAlign: "center",
-  },
+
   statText: {
     width: 30,
     textAlign: "center",
   },
-  roundHeader: {
+  //   container: {
+  //     flex: 1,
+  //     padding: 16,
+  //   },
+  card: {
+    backgroundColor: "white",
+    borderRadius: 8,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cardHeader: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  table: {
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    borderRadius: 4,
+  },
+  tableHeader: {
+    backgroundColor: "#f5f5f5",
+  },
+  tableHead: {
+    flex: 1,
+    padding: 8,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  flag: {
+    width: 24,
+    height: 16,
+    marginRight: 8,
+  },
+  //   teamName: {
+  //     fontWeight: "500",
+  //   },
+
+  score: {
     fontSize: 18,
     fontWeight: "bold",
-    marginTop: 15,
-    marginBottom: 10,
+    marginHorizontal: 8,
+  },
+
+  cardContent: {
+    padding: 16,
+  },
+  matchItem: {
+    backgroundColor: "#f5f5f5",
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    // padding: 16,
+    // backgroundColor: "#f5f5f5",
+    // borderRadius: 8,
+    // marginBottom: 8,
+  },
+  matchHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  matchGroup: {
+    fontSize: 14,
+    color: "#666",
+    // fontSize: 14,
+    fontWeight: "bold",
+    // color: "#666",
+  },
+  matchRound: {
+    fontSize: 14,
+    color: "#666",
+    // fontSize: 14,
+    fontWeight: "bold",
+    // color: "#666",
+  },
+  matchTeams: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+
+  scoreContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  scoreInput: {
+    width: 40,
+    height: 40,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 4,
+    textAlign: "center",
+    fontSize: 18,
+  },
+  scoreSeparator: {
+    fontSize: 18,
+    marginHorizontal: 8,
+  },
+  matchFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  date: {
+    fontSize: 14,
+    color: "#666",
+  },
+  groupStageContainer: {
+    marginVertical: 20,
+  },
+  stageHeader: {
+    fontSize: 24,
+    fontWeight: "bold",
     color: "#333",
+    marginBottom: 16,
+    textAlign: "center",
+    // fontSize: 20,
+    // fontWeight: "bold",
+    marginTop: 20,
+    // marginBottom: 10,
+  },
+  groupContainer: {
+    marginBottom: 20,
+    borderRadius: 12,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    // marginBottom: 15,
+    backgroundColor: "#f0f0f0",
+    padding: 10,
+    // borderRadius: 5,
+  },
+  groupHeader: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#fff",
+    backgroundColor: "#3498db",
+    padding: 12,
+    // fontSize: 16,
+    // fontWeight: "bold",
+    marginBottom: 5,
+  },
+  statsHeader: {
+    flexDirection: "row",
+    backgroundColor: "#34495e",
+    paddingVertical: 8,
+  },
+  statsHeaderText: {
+    color: "#fff",
+    fontWeight: "bold",
+    flex: 1,
+    textAlign: "center",
+
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 5,
+    paddingHorizontal: 10,
+
+    // fontWeight: "bold",
+    width: 30,
+    // textAlign: "center",
+  },
+  tableBody: {
+    backgroundColor: "#fff",
+  },
+  tableRow: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#ecf0f1",
+    alignItems: "center",
+  },
+  tableCell: {
+    flex: 1,
+    padding: 12,
+    textAlign: "center",
+  },
+  teamColumn: {
+    flex: 2,
+    justifyContent: "flex-start",
+
+    // flex: 2,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  teamName: {
+    fontWeight: "500",
+    color: "#2c3e50",
+
+    fontSize: 16,
+    // fontWeight: "500",
+    flex: 1,
+  },
+  points: {
+    fontWeight: "bold",
+    color: "#27ae60",
+  },
+  swapButton: {
+    backgroundColor: "#3498db",
+    padding: 8,
+    borderRadius: 4,
+    marginRight: 8,
   },
 });
 

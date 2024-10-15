@@ -23,6 +23,8 @@ type AuthState = {
   register: (email: string, password: string, role: string) => Promise<void>;
   logout: () => Promise<void>;
   alertError: (error: any) => void;
+  updatePassword: (password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
 };
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -104,5 +106,36 @@ export const useAuthStore = create<AuthState>((set) => ({
       title: "Lỗi",
       message: error.message,
     });
+  },
+  updatePassword: async (password) => {
+    const user = auth().currentUser;
+    if (user) {
+      try {
+        await user.updatePassword(password);
+        toast({
+          title: "Cập nhật mật khẩu thành công 😎",
+          message: "Mật khẩu đã được cập nhật",
+        });
+      } catch (error) {
+        toast({
+          title: "Cập nhật mật khẩu thất bại 😎",
+          message: "Mật khẩu đã được cập nhật",
+        });
+      }
+    }
+  },
+  resetPassword: async (email) => {
+    try {
+      await auth().sendPasswordResetEmail(email);
+      toast({
+        title: "Đặt lại mật khẩu thành công 😎",
+        message: "Mật khẩu đã được gửi đến email của bạn",
+      });
+    } catch (error) {
+      toast({
+        title: "Đặt lại mật khẩu thất bại 😎",
+        message: "Mật khẩu đã được gửi đến email của bạn",
+      });
+    }
   },
 }));

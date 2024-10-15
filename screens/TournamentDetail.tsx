@@ -3,16 +3,14 @@ import {
   Dimensions,
   Image,
   Modal,
-  ScrollView,
   SectionList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import CustomActivityIndicator from "../components/CustomActivityIndicator";
+import CustomModal from "../components/CustomModal";
 import { FlatList } from "react-native-gesture-handler";
-import { ActivityIndicator } from "react-native-paper";
 
 import { alert } from "@baronha/ting";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -28,10 +26,10 @@ const { width } = Dimensions.get("window");
 export default function TournamentDetail({
   route,
   navigation,
-}: {
+}: Readonly<{
   route: any;
   navigation: any;
-}) {
+}>) {
   const { tournamentId } = route.params;
   const {
     tournaments,
@@ -73,7 +71,7 @@ export default function TournamentDetail({
       setPrizes(fetchedPrizes);
     };
     loadPrizes();
-    console.log(tournament.groups);
+    // console.log(tournament.groups);
     if (user && user.role === "coach") {
       fetchTeamsSpecifiedCoachId(user.email);
     }
@@ -276,14 +274,14 @@ export default function TournamentDetail({
                 </TouchableOpacity>
               ))}
             </View>
-            {user && user.role === "coach" && (
+            {/* {user && user.role === "coach" && (
               <TouchableOpacity
                 style={styles.joinButton}
                 onPress={() => setTeamSelectionModalVisible(true)}
               >
                 <Text style={styles.joinButtonText}>Join Tournament</Text>
               </TouchableOpacity>
-            )}
+            )} */}
           </View>
         );
       case "groups":
@@ -347,29 +345,19 @@ export default function TournamentDetail({
         </TouchableOpacity>
       )}
 
-      <Modal
-        animationType="slide"
-        transparent={true}
+      <CustomModal
         visible={teamsModalVisible}
-        onRequestClose={() => setTeamsModalVisible(false)}
+        onClose={() => setTeamsModalVisible(false)}
+        title="Registered Teams"
       >
-        <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Registered Teams</Text>
-          <FlatList
-            data={registeredTeams}
-            renderItem={renderTeamItem}
-            keyExtractor={(item) => item.id}
-            numColumns={2}
-            columnWrapperStyle={styles.teamRow}
-          />
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={() => setTeamsModalVisible(false)}
-          >
-            <Text style={styles.closeButtonText}>Close</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
+        <FlatList
+          data={registeredTeams}
+          renderItem={renderTeamItem}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          columnWrapperStyle={styles.teamRow}
+        />
+      </CustomModal>
 
       <Modal
         animationType="slide"
@@ -416,47 +404,33 @@ export default function TournamentDetail({
           </View>
         </View>
       </Modal>
-      <Modal
-        animationType="slide"
-        transparent={true}
+      <CustomModal
         visible={schedulesModalVisible}
-        onRequestClose={() => setSchedulesModalVisible(false)}
+        onClose={() => setSchedulesModalVisible(false)}
+        title="Schedules"
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Schedules</Text>
-            {loading ? (
-              <FootballLoadingIndicator size="small" color="black" />
-            ) : (
-              <>
-                {schedules.length > 0 ? (
-                  <SectionList
-                    sections={groupSchedulesByRound(schedules) as any}
-                    renderItem={renderScheduleItem}
-                    renderSectionHeader={({ section: { round } }) => (
-                      <View style={styles.roundHeader}>
-                        <Text style={styles.roundHeaderText}>
-                          Round {round}
-                        </Text>
-                      </View>
-                    )}
-                  />
-                ) : (
-                  <Text style={styles.noSchedulesText}>
-                    No schedules yet. Please check back later.
-                  </Text>
+        {loading ? (
+          <FootballLoadingIndicator size="small" color="black" />
+        ) : (
+          <>
+            {schedules.length > 0 ? (
+              <SectionList
+                sections={groupSchedulesByRound(schedules) as any}
+                renderItem={renderScheduleItem}
+                renderSectionHeader={({ section: { round } }) => (
+                  <View style={styles.roundHeader}>
+                    <Text style={styles.roundHeaderText}>Round {round}</Text>
+                  </View>
                 )}
-              </>
+              />
+            ) : (
+              <Text style={styles.noSchedulesText}>
+                No schedules yet. Please check back later.
+              </Text>
             )}
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setSchedulesModalVisible(false)}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+          </>
+        )}
+      </CustomModal>
     </View>
   );
 }

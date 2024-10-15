@@ -1,8 +1,17 @@
-import React, {useState} from "react";
-import {Image, ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity, View,} from "react-native";
-import {useAuthStore} from "../store/authStore";
+import React, { useState } from "react";
+import {
+  Image,
+  ImageBackground,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Modal,
+} from "react-native";
+import { useAuthStore } from "../store/authStore";
 import FootballLoadingIndicator from "../components/FootballLoadingIndicator";
-import {alert} from "@baronha/ting";
+import { alert } from "@baronha/ting";
 
 const LoginScreen = ({ navigation }: { navigation: any }) => {
   const [loading, setLoading] = useState(false);
@@ -11,6 +20,24 @@ const LoginScreen = ({ navigation }: { navigation: any }) => {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const login = useAuthStore((state) => state.login);
+  const [modalVisible, setModalVisible] = useState(false);
+  const resetPassword = useAuthStore((state) => state.resetPassword);
+  const [isLoading, setIsLoading] = useState(false);
+  const handleResetPassword = async () => {
+    try {
+      setIsLoading(true);
+      await resetPassword(email);
+      setIsLoading(false);
+      setModalVisible(false);
+    } catch (error) {
+      setIsLoading(false);
+      alert({
+        title: "Lỗi",
+        message: "An unknown error occurred",
+        preset: "error",
+      });
+    }
+  };
   // const user = useAuthStore((state) => state.user);
   const validateEmail = (email: string) => {
     // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -75,7 +102,7 @@ const LoginScreen = ({ navigation }: { navigation: any }) => {
       style={styles.backgroundImage}
     >
       {loading === true ? (
-        <FootballLoadingIndicator color="black" size="big"/>
+        <FootballLoadingIndicator color="black" size="big" />
       ) : (
         <View style={styles.overlay}>
           <View style={styles.container}>
@@ -120,7 +147,55 @@ const LoginScreen = ({ navigation }: { navigation: any }) => {
             >
               <Text style={styles.buttonText}>Register</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.registerButton]}
+              onPress={() => setModalVisible(true)}
+            >
+              <Text style={styles.buttonText}>Reset Password</Text>
+            </TouchableOpacity>
           </View>
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={modalVisible}
+            onRequestClose={() => {
+              setModalVisible(!modalVisible);
+            }}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Reset Password</Text>
+                {isLoading ? (
+                  <FootballLoadingIndicator size="small" color="black" />
+                ) : (
+                  <>
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="Email"
+                      placeholderTextColor="#999"
+                      value={email}
+                      onChangeText={(text) => setEmail(text)}
+                    />
+                    <TouchableOpacity
+                      style={styles.modalButton}
+                      onPress={handleResetPassword}
+                    >
+                      <Text style={styles.modalButtonText}>Reset Password</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.modalButton,
+                        { marginTop: 10, backgroundColor: "#ccc" },
+                      ]}
+                      onPress={() => setModalVisible(false)}
+                    >
+                      <Text style={styles.modalButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            </View>
+          </Modal>
         </View>
       )}
     </ImageBackground>
@@ -184,6 +259,47 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 8,
+    width: "80%",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 12,
+  },
+  modalInput: {
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    color: "#333",
+  },
+  modalButton: {
+    backgroundColor: "#4a69bd",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  modalButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  modalCancelButton: {
+    backgroundColor: "#ccc",
   },
 });
 

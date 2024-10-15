@@ -1,7 +1,7 @@
 import React from "react";
-import {createBottomTabNavigator} from "@react-navigation/bottom-tabs";
-import {createStackNavigator} from "@react-navigation/stack"; // Import StackNavigator
-import {Provider as PaperProvider} from "react-native-paper";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createStackNavigator } from "@react-navigation/stack"; // Import StackNavigator
+import { Provider as PaperProvider } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
 // import PlayersManagement from './PlayersManagement';
@@ -20,19 +20,19 @@ const Stack = createStackNavigator(); // Create a StackNavigator instance
 
 // Define a mapping of route names to icon names
 const iconMap: { [key: string]: [string, string] } = {
-    Players: ["account-group-outline", "account-group"],
-    Coaches: ["whistle-outline", "whistle"],
-    Tournaments: ["trophy-outline", "trophy"],
-    Teams: ["account-group-outline", "account-group"],
-    Profile: ["account-outline", "account"],
-    Home: ["home-outline", "home"],
+  Players: ["account-group-outline", "account-group"],
+  Coaches: ["whistle-outline", "whistle"],
+  Tournamentss: ["trophy-outline", "trophy"],
+  Teams: ["account-group-outline", "account-group"],
+  Profile: ["account-outline", "account"],
+  Home: ["home-outline", "home"],
 };
 
 // Define the tabBarIcon function using the mapping
 const getTabBarIcon = (route: any, focused: any, color: any, size: any) => {
-    const [outlineIcon, filledIcon] = iconMap[route.name] || ["", ""];
-    const iconName = focused ? filledIcon : outlineIcon;
-    return <Icon name={iconName} size={size} color={color}/>;
+  const [outlineIcon, filledIcon] = iconMap[route.name] || ["", ""];
+  const iconName = focused ? filledIcon : outlineIcon;
+  return <Icon name={iconName} size={size} color={color} />;
 };
 
 export default function AdminNavigator() {
@@ -47,7 +47,14 @@ export default function AdminNavigator() {
       >
         <Tab.Screen name="Home" component={HomeRouter} />
         <Tab.Screen name="Players" component={PlayersManagement} />
-        <Tab.Screen name="Tournaments" component={TournamentRouter} />
+        <Tab.Screen
+          name="Tournamentss"
+          component={TournamentRouter}
+          options={{
+            headerShown: false,
+            headerTitle: "Tournaments",
+          }}
+        />
         <Tab.Screen name="Teams" component={TeamsManagement} />
         <Tab.Screen name="Profile" component={ProfileRouter} />
 

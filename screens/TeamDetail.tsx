@@ -7,7 +7,6 @@ import {
   Image,
   StyleSheet,
   Dimensions,
-  Modal,
   FlatList,
   TextInput,
   ActivityIndicator,
@@ -16,10 +15,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useStore } from "../store/store";
 import { useAuthStore } from "../store/authStore";
 import { alert } from "@baronha/ting";
+import CustomModal from "../components/CustomModal";
 
 const { width, height } = Dimensions.get("window");
 
-export default function TeamDetail({ route , navigation }: any) {
+export default function TeamDetail({ route, navigation }: any) {
   const { teamId } = route.params;
   const {
     teams,
@@ -53,7 +53,10 @@ export default function TeamDetail({ route , navigation }: any) {
     setAllPlayers(players);
     setLoading(false);
   }, [teamId, fetchTeams, fetchTeamMembers, fetchAllPlayers]);
-
+  const handleCloseModal = () => {
+    setIsModalVisible(false);
+    setSelectedPlayers([]);
+  };
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -145,52 +148,40 @@ export default function TeamDetail({ route , navigation }: any) {
         </TouchableOpacity>
       )}
 
-      <Modal
+      <CustomModal
         visible={isModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setIsModalVisible(false)}
+        onClose={handleCloseModal}
+        title="Invite Players"
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Invite Players</Text>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search players..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            <FlatList
-              data={filteredPlayers}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.playerItem,
-                    selectedPlayers.includes(item.id) && styles.selectedPlayer,
-                  ]}
-                  onPress={() => togglePlayerSelection(item.id)}
-                >
-                  <Text>{item.id}</Text>
-                  <Text>{item.name || "Unknown"}</Text>
-                </TouchableOpacity>
-              )}
-            />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search players..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        <FlatList
+          data={filteredPlayers}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
             <TouchableOpacity
-              style={styles.inviteButton}
-              onPress={handleInvitePlayers}
+              style={[
+                styles.playerItem,
+                selectedPlayers.includes(item.id) && styles.selectedPlayer,
+              ]}
+              onPress={() => togglePlayerSelection(item.id)}
             >
-              <Text style={styles.inviteButtonText}>Send Invitations</Text>
+              <Text>{item.id}</Text>
+              <Text>{item.name || "Unknown"}</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => setIsModalVisible(false)}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+          )}
+        />
+        <TouchableOpacity
+          style={styles.inviteButton}
+          onPress={handleInvitePlayers}
+        >
+          <Text style={styles.inviteButtonText}>Send Invitations</Text>
+        </TouchableOpacity>
+      </CustomModal>
     </ScrollView>
   );
 }

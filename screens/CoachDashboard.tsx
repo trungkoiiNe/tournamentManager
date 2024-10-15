@@ -9,14 +9,15 @@ import {
   TouchableOpacity,
   Image,
   TextInput,
-  Modal,
+
   ActivityIndicator,
 } from "react-native";
 import { useStore } from "../store/store";
 import ImagePicker from "react-native-image-crop-picker";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { useAuthStore } from "../store/authStore";
-import { alert } from "@baronha/ting";
+import { alert, toast } from "@baronha/ting";
+import CustomModal from "../components/CustomModal";
 const CoachDashboard = ({ navigation }) => {
   const { teams, fetchTeamsSpecifiedCoachId, addTeam, uploadTeamImages } =
     useStore();
@@ -24,15 +25,20 @@ const CoachDashboard = ({ navigation }) => {
   const coachId = useAuthStore((state) => state.user?.email);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
-  const [newTeamLogo, setNewTeamLogo] = useState(null);
-  const [newTeamBanner, setNewTeamBanner] = useState(null);
+  const [newTeamLogo, setNewTeamLogo] = useState<any>(null);
+  const [newTeamBanner , setNewTeamBanner ] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-
+  const handleCloseModal = () => {
+    setIsModalVisible(false);
+    setNewTeamName("");
+    setNewTeamLogo(null);
+    setNewTeamBanner(null);
+  };
   const loadTeams = useCallback(async () => {
     if (coachId) {
       setLoading(true);
       console.log(coachId);
-      await fetchTeamsSpecifiedCoachId(coachId);
+      fetchTeamsSpecifiedCoachId(coachId);
       // console.log(teams.map((team) => team.teamName));
       setLoading(false);
     }
@@ -57,8 +63,8 @@ const CoachDashboard = ({ navigation }) => {
         setNewTeamBanner(image);
       }
     } catch (error) {
-      console.error("ImagePicker Error:", error);
-      alert({
+      // console.error("ImagePicker Error:", error);
+      toast({
         title: "Lỗi",
         message: `Không thể chọn ảnh ${type}. Vui lòng thử lại.`,
         preset: "error",
@@ -86,7 +92,7 @@ const CoachDashboard = ({ navigation }) => {
 
       const result = await addTeam(newTeam);
 
-      if (!result || !result.id) {
+      if ( !result.id) {
         throw new Error("Failed to create team: No ID returned");
       }
 
@@ -124,7 +130,6 @@ const CoachDashboard = ({ navigation }) => {
     newTeamLogo,
     newTeamBanner,
   ]);
-
   const renderTeamItem = useCallback(
     ({ item }) => (
       <TouchableOpacity
@@ -141,7 +146,16 @@ const CoachDashboard = ({ navigation }) => {
           }
           style={styles.banner}
         />
-        <Image source={item.logoUrl? {uri: item.logoUrl}: {uri: "https://firebasestorage.googleapis.com/v0/b/tournament-manager-d7665.appspot.com/o/noimages.png?alt=media&token=5dd2c160-9ea2-44b9-b913-5aba4f6fc3b8"}} style={styles.logo} />
+        <Image
+          source={
+            item.logoUrl
+              ? { uri: item.logoUrl }
+              : {
+                  uri: "https://firebasestorage.googleapis.com/v0/b/tournament-manager-d7665.appspot.com/o/noimages.png?alt=media&token=5dd2c160-9ea2-44b9-b913-5aba4f6fc3b8",
+                }
+          }
+          style={styles.logo}
+        />
         <Text style={styles.teamName}>{item.teamName}</Text>
         <Text
           style={styles.playerCount}
@@ -177,60 +191,48 @@ const CoachDashboard = ({ navigation }) => {
         numColumns={2}
         columnWrapperStyle={styles.row}
       />
-      <Modal
+      <CustomModal
         visible={isModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setIsModalVisible(false)}
+        onClose={() => handleCloseModal()}
+        title="Create New Team"
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalHeader}>Create New Team</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter team name"
-              value={newTeamName}
-              onChangeText={setNewTeamName}
-            />
-            <TouchableOpacity
-              style={styles.imageButton}
-              onPress={() => pickImage("logo")}
-            >
-              <Text style={styles.imageButtonText}>Select Logo</Text>
-            </TouchableOpacity>
-            {newTeamLogo && (
-              <Image
-                source={{ uri: newTeamLogo.path }}
-                style={styles.previewImage}
-              />
-            )}
-            <TouchableOpacity
-              style={styles.imageButton}
-              onPress={() => pickImage("banner")}
-            >
-              <Text style={styles.imageButtonText}>Select Banner</Text>
-            </TouchableOpacity>
-            {newTeamBanner && (
-              <Image
-                source={{ uri: newTeamBanner.path }}
-                style={styles.previewImage}
-              />
-            )}
-            <TouchableOpacity
-              style={styles.createTeamButton}
-              onPress={handleCreateTeam}
-            >
-              <Text style={styles.createTeamButtonText}>Create Team</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => setIsModalVisible(false)}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter team name"
+          value={newTeamName}
+          onChangeText={setNewTeamName}
+        />
+        <TouchableOpacity
+          style={styles.imageButton}
+          onPress={() => pickImage("logo")}
+        >
+          <Text style={styles.imageButtonText}>Select Logo</Text>
+        </TouchableOpacity>
+        {newTeamLogo && (
+          <Image
+            source={{ uri: newTeamLogo.path }}
+            style={styles.previewImage}
+          />
+        )}
+        <TouchableOpacity
+          style={styles.imageButton}
+          onPress={() => pickImage("banner")}
+        >
+          <Text style={styles.imageButtonText}>Select Banner</Text>
+        </TouchableOpacity>
+        {newTeamBanner && (
+          <Image
+            source={{ uri: newTeamBanner.path }}
+            style={styles.previewImage}
+          />
+        )}
+        <TouchableOpacity
+          style={styles.createTeamButton}
+          onPress={handleCreateTeam}
+        >
+          <Text style={styles.createTeamButtonText}>Create Team</Text>
+        </TouchableOpacity>
+      </CustomModal>
     </View>
   );
 };
@@ -250,7 +252,7 @@ const styles = StyleSheet.create({
   createButton: {
     position: "absolute",
     right: 20,
-    top: 20,
+    top: 10,
     backgroundColor: "#4CAF50",
     borderRadius: 30,
     width: 60,
