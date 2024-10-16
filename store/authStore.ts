@@ -2,6 +2,27 @@ import { create } from "zustand";
 import auth from "@react-native-firebase/auth";
 import firestore from "@react-native-firebase/firestore";
 import { toast } from "@baronha/ting";
+import { Audio } from "expo-av";
+import * as Speech from "expo-speech";
+const playSound = async (soundFile: any) => {
+  try {
+    const { sound } = await Audio.Sound.createAsync(soundFile);
+    await sound.playAsync();
+  } catch (error) {
+    console.log("Error playing sound", error);
+  }
+};
+const speakGreeting = async (username: string) => {
+  try {
+    await Speech.speak(`Hello ${username}, have a good day!`, {
+      language: "en",
+      pitch: 1,
+      rate: 0.8,
+    });
+  } catch (error) {
+    console.log("Error speaking greeting", error);
+  }
+};
 type User = {
   uid: string;
   email: string;
@@ -45,6 +66,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (userDoc.exists) {
         const userData = userDoc.data();
         set({ user: { uid, email: lowercaseEmail, role: userData?.role } });
+
+        await speakGreeting("David");
         toast({
           title: "Đăng nhập thành công 😎",
           message: `Chào mừng ${email}`,
@@ -53,6 +76,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         throw new Error("User not found");
       }
     } catch (error) {
+      await playSound(require("../assets/error.mp3"));
       // console.error("Login error:", error);
       throw error;
     }
@@ -77,11 +101,15 @@ export const useAuthStore = create<AuthState>((set) => ({
           role: role as "admin" | "coach" | "player" | "organizer",
         },
       });
+      await playSound(require("../assets/start.mp3"));
+
       toast({
         title: "Đăng ký thành công 😎",
         message: `Chào mừng ${email}`,
       });
     } catch (error) {
+      await playSound(require("../assets/error.mp3"));
+
       // console.error("Register error:", error);
       throw error;
     }
@@ -91,12 +119,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await auth().signOut();
       set({ user: null });
+      await playSound(require("../assets/out.mp3"));
+
       toast({
         title: "Đăng xuất thành công 😎",
         message: "Chúc bạn một ngày tốt lành!",
       });
       // console.log(user);
     } catch (error) {
+      await playSound(require("../assets/error.mp3"));
       // console.error('Logout error:', error);
       // throw error;
     }
@@ -112,11 +143,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (user) {
       try {
         await user.updatePassword(password);
+        await playSound(require("../assets/change.mp3"));
+
         toast({
           title: "Cập nhật mật khẩu thành công 😎",
           message: "Mật khẩu đã được cập nhật",
         });
       } catch (error) {
+        await playSound(require("../assets/error.mp3"));
+
         toast({
           title: "Cập nhật mật khẩu thất bại 😎",
           message: "Mật khẩu đã được cập nhật",

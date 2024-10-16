@@ -13,16 +13,16 @@ import {
   TouchableOpacity,
   View,
   Animated,
+  ScrollView,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-// import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { Card } from "react-native-elements";
 import ImagePicker from "react-native-image-crop-picker";
 import { useStore } from "../store/store";
-
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import FootballLoadingIndicator from "../components/FootballLoadingIndicator";
 import { SafeAreaView } from "react-native-safe-area-context";
+
 const UpdateTournament = ({
   route,
   navigation,
@@ -64,15 +64,12 @@ const UpdateTournament = ({
   useEffect(() => {
     const loadTournamentData = async () => {
       try {
-        // Fetch prizes
         const fetchedPrizes = await fetchPrizes(tournament.id);
         setPrizes(fetchedPrizes as any);
 
-        // Fetch schedules
         const fetchedSchedules = await fetchTournamentSchedules(tournament.id);
         setMatches(fetchedSchedules);
 
-        // Set groups from tournament data
         if (tournament.groups) {
           const groupsArray = Object.entries(tournament.groups).map(
             ([name, teams]) => ({
@@ -89,7 +86,6 @@ const UpdateTournament = ({
           setGroups(groupsArray);
         }
 
-        // Fetch registered teams
         const unsubscribe = fetchRegisteredTeams(tournament.id);
 
         return () => {
@@ -125,13 +121,6 @@ const UpdateTournament = ({
     ]);
   }, []);
 
-  // const updatePrize = useCallback((index, field, value) => {
-  //   setPrizes((prev) => {
-  //     const newPrizes = [...prev];
-  //     newPrizes[index][field] = value;
-  //     return newPrizes;
-  //   });
-  // }, []);
   const updatePrize = useCallback((index: any, field: any, value: any) => {
     setPrizes((prev: any) => {
       const newPrizes = [...prev];
@@ -202,7 +191,6 @@ const UpdateTournament = ({
         numberOfPrizes: parseInt(prize.numberOfPrizes),
         moneyPerPrize: parseInt(prize.moneyPerPrize),
       }));
-      // console.log(groups.map((group) => group.));
       await updateTournament(updatedTournament, updatedPrizes, matches, groups);
 
       if (newBannerImage || newLogoImage) {
@@ -241,6 +229,7 @@ const UpdateTournament = ({
     matches,
     groups,
   ]);
+
   const updateTeamStats = useCallback(
     (groupName: any, teamId: any, newStats: any) => {
       setGroups((prevGroups: any) => ({
@@ -259,6 +248,7 @@ const UpdateTournament = ({
     },
     []
   );
+
   const generateDemoSchedule = useCallback(() => {
     if (registeredTeams.length < 2) {
       alert({
@@ -270,7 +260,7 @@ const UpdateTournament = ({
     }
 
     let schedule = [];
-    setMatches([]); // Clear matches when generating a new schedule
+    setMatches([]);
 
     if (tournamentData.format === "roundRobin") {
       schedule = generateRoundRobinSchedule(registeredTeams);
@@ -333,6 +323,7 @@ const UpdateTournament = ({
 
     setGroups(newGroups);
   }, [groups, matches]);
+
   const generateRoundRobinSchedule = useCallback((teams: any) => {
     let schedule: any[] = [];
     for (let i = 0; i < teams.length - 1; i++) {
@@ -349,14 +340,13 @@ const UpdateTournament = ({
     }
     return schedule;
   }, []);
+
   const generateKnockoutSchedule = useCallback((teams: any) => {
-    // Step 1: Ensure the number of teams is a power of 2
     let adjustedTeams = [...teams];
     while (adjustedTeams.length & (adjustedTeams.length - 1 !== 0)) {
       adjustedTeams.push({ teamName: "BYE" });
     }
 
-    // Step 2: Shuffle the teams
     for (let i = adjustedTeams.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [adjustedTeams[i], adjustedTeams[j]] = [
@@ -372,7 +362,6 @@ const UpdateTournament = ({
     while (remainingTeams.length > 1) {
       let roundMatches = [];
 
-      // Step 3: Create matchups
       for (let i = 0; i < remainingTeams.length; i += 2) {
         roundMatches.push({
           round: round,
@@ -387,17 +376,14 @@ const UpdateTournament = ({
 
       schedule = [...schedule, ...roundMatches];
 
-      // Step 4 & 5: Prepare for the next round
       remainingTeams = remainingTeams.filter((_, index) => index % 2 === 0);
       round++;
     }
 
-    // Step 6: The last team in remainingTeams is the champion
     return schedule;
   }, []);
 
   const generateKnockoutMatches = useCallback(() => {
-    // Calculate points for each team
     const teamPoints: { [key: string]: number } = {};
     groups.forEach((group: any) => {
       group.teams.forEach((team: any) => {
@@ -420,17 +406,16 @@ const UpdateTournament = ({
       }
     });
 
-    // Get top two teams from each group
     const knockoutTeams = groups.flatMap((group: any) =>
       group.teams
         .sort((a: any, b: any) => teamPoints[b.id] - teamPoints[a.id])
         .slice(0, 2)
     );
 
-    // Generate knockout matches
     const knockoutMatches = generateKnockoutSchedule(knockoutTeams);
     setMatches((prevMatches: any) => [...prevMatches, ...knockoutMatches]);
   }, [groups, matches, generateKnockoutSchedule]);
+
   const generateGroupMatches = (
     groups: any,
     generateRoundRobinSchedule: any
@@ -442,6 +427,7 @@ const UpdateTournament = ({
       }))
     );
   };
+
   const distributeTeamsToGroups = (teams: any, numberOfGroups: any) => {
     const newGroups = Array.from({ length: numberOfGroups }, (_, i) => ({
       name: String.fromCharCode(65 + i),
@@ -454,6 +440,7 @@ const UpdateTournament = ({
 
     return newGroups;
   };
+
   const generateGroupKnockoutSchedule = useCallback(
     (teams: any) => {
       const numberOfGroups = Math.min(Math.floor(teams.length / 3), 4);
@@ -462,14 +449,12 @@ const UpdateTournament = ({
         teams: [] as any,
       }));
 
-      // Distribute teams to groups
       teams.forEach((team: any, index: any) => {
         newGroups[index % numberOfGroups].teams.push(team);
       });
 
       setGroups(newGroups);
 
-      // Generate group stage matches
       const groupMatches = newGroups.flatMap((group: any) =>
         generateRoundRobinSchedule(group.teams).map((match: any) => ({
           ...match,
@@ -495,6 +480,7 @@ const UpdateTournament = ({
     },
     []
   );
+
   const generateMatches = useCallback(() => {
     const newMatches = generateGroupMatches(
       groups,
@@ -520,6 +506,7 @@ const UpdateTournament = ({
     },
     [calculateGroupStats]
   );
+
   const updateMatchTimestamp = useCallback((index: any, timestamp: any) => {
     setMatches((prevMatches: any) => {
       const newMatches = [...prevMatches];
@@ -535,9 +522,7 @@ const UpdateTournament = ({
           <TouchableOpacity
             key={team.id}
             style={styles.tableRow}
-            onPress={() => {
-              /* Open detailed team view */
-            }}
+            onPress={() => {}}
           >
             <View style={[styles.tableCell, styles.teamColumn]}>
               <Text style={styles.teamName}>{team.teamName}</Text>
@@ -618,6 +603,7 @@ const UpdateTournament = ({
       </View>
     );
   }, [groups, tournamentData.format, renderGroupTeams, swapTeams]);
+
   const renderMatches = useCallback(() => {
     if (!matches || matches.length === 0) {
       return <Text>No matches generated yet.</Text>;
@@ -681,289 +667,279 @@ const UpdateTournament = ({
     updateMatchResult,
     updateMatchTimestamp,
   ]);
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <FootballLoadingIndicator size="big" color="black" />
-        {/* <Text style={styles.loadingText}>Updating tournament...</Text> */}
       </View>
     );
   }
+
   return (
-    <SafeAreaView>
-      <FlatList
-        ListHeaderComponent={
-          <>
-            <Text style={styles.header}>Update Tournament</Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView>
+        <Text style={styles.header}>Update Tournament</Text>
 
-            <TouchableOpacity
-              style={styles.imageButton}
-              onPress={() => pickImage("banner")}
-            >
-              <Text style={styles.imageButtonText}>Update Banner Image</Text>
-            </TouchableOpacity>
-            {(newBannerImage || tournamentData.bannerUrl) && (
-              <Image
-                source={{
-                  uri: newBannerImage
-                    ? newBannerImage.path
-                    : tournamentData.bannerUrl,
-                }}
-                style={styles.previewImage}
-              />
-            )}
-
-            <TouchableOpacity
-              style={styles.imageButton}
-              onPress={() => pickImage("logo")}
-            >
-              <Text style={styles.imageButtonText}>Update Logo Image</Text>
-            </TouchableOpacity>
-            {(newLogoImage || tournamentData.logoUrl) && (
-              <Image
-                source={{
-                  uri: newLogoImage
-                    ? newLogoImage.path
-                    : tournamentData.logoUrl,
-                }}
-                style={styles.previewImage}
-              />
-            )}
-
-            <TextInput
-              style={styles.input}
-              placeholder="Tournament Name"
-              placeholderTextColor="#999"
-              value={tournamentData.name}
-              onChangeText={(value) => handleInputChange("name", value)}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Purpose"
-              placeholderTextColor="#999"
-              value={tournamentData.purpose}
-              onChangeText={(value) => handleInputChange("purpose", value)}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Number of Teams"
-              placeholderTextColor="#999"
-              value={tournamentData.numberOfTeams.toString()}
-              onChangeText={(value) =>
-                handleInputChange("numberOfTeams", value)
-              }
-              keyboardType="numeric"
-            />
-            <TouchableOpacity
-              style={styles.dateButton}
-              onPress={() => setShowStartDatePicker(true)}
-            >
-              <Text style={styles.dateButtonText}>
-                Start Date: {tournamentData.startDate.toLocaleDateString()}
-              </Text>
-            </TouchableOpacity>
-            {showStartDatePicker && (
-              <DateTimePicker
-                value={tournamentData.startDate}
-                mode="date"
-                display={Platform.OS === "ios" ? "spinner" : "default"}
-                onChange={(event, selectedDate) =>
-                  onChangeDate("startDate", event, selectedDate)
-                }
-              />
-            )}
-
-            <TouchableOpacity
-              style={styles.dateButton}
-              onPress={() => setShowEndDatePicker(true)}
-            >
-              <Text style={styles.dateButtonText}>
-                End Date: {tournamentData.endDate.toLocaleDateString()}
-              </Text>
-            </TouchableOpacity>
-            {showEndDatePicker && (
-              <DateTimePicker
-                value={tournamentData.endDate}
-                mode="date"
-                display={Platform.OS === "ios" ? "spinner" : "default"}
-                onChange={(event, selectedDate) =>
-                  onChangeDate("endDate", event, selectedDate)
-                }
-              />
-            )}
-            <TextInput
-              style={styles.input}
-              placeholder="Location"
-              placeholderTextColor="#999"
-              value={tournamentData.location}
-              onChangeText={(value) => handleInputChange("location", value)}
-            />
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={tournamentData.format}
-                onValueChange={(itemValue) =>
-                  handleInputChange("format", itemValue)
-                }
-                style={styles.picker}
-              >
-                <Picker.Item label="Select Format" value="" />
-                <Picker.Item label="Round Robin" value="roundRobin" />
-                <Picker.Item label="Knockout" value="knockout" />
-                <Picker.Item
-                  label="Group Stage + Knockout"
-                  value="groupKnockout"
-                />
-              </Picker>
-            </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Budget"
-              placeholderTextColor="#999"
-              value={tournamentData.budget.toString()}
-              onChangeText={(value) => handleInputChange("budget", value)}
-              keyboardType="numeric"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Organizers (comma-separated)"
-              placeholderTextColor="#999"
-              value={
-                Array.isArray(tournamentData.organizers)
-                  ? tournamentData.organizers.join(",")
-                  : tournamentData.organizers
-              }
-              onChangeText={(value) => handleInputChange("organizers", value)}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Sponsors (comma-separated)"
-              placeholderTextColor="#999"
-              value={
-                Array.isArray(tournamentData.sponsors)
-                  ? tournamentData.sponsors.join(",")
-                  : tournamentData.sponsors
-              }
-              onChangeText={(value) => handleInputChange("sponsors", value)}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Max Players per Team"
-              placeholderTextColor="#999"
-              value={tournamentData.maxPlayersPerTeam.toString()}
-              onChangeText={(value) =>
-                handleInputChange("maxPlayersPerTeam", value)
-              }
-              keyboardType="numeric"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Max Coaches"
-              placeholderTextColor="#999"
-              value={tournamentData.maxCoaches.toString()}
-              onChangeText={(value) => handleInputChange("maxCoaches", value)}
-              keyboardType="numeric"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Rounds per Match"
-              placeholderTextColor="#999"
-              value={tournamentData.roundsPerMatch.toString()}
-              onChangeText={(value) =>
-                handleInputChange("roundsPerMatch", value)
-              }
-              keyboardType="numeric"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Time per Round (in minutes)"
-              placeholderTextColor="#999"
-              value={tournamentData.timePerRound.toString()}
-              onChangeText={(value) => handleInputChange("timePerRound", value)}
-              keyboardType="numeric"
-            />
-            <Text style={styles.sectionHeader}>Prizes</Text>
-            {prizes.map((prize: any, index: any) => (
-              <Card key={index} containerStyle={styles.prizeContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Prize Category"
-                  placeholderTextColor="#999"
-                  value={prize.category as string}
-                  onChangeText={(text: any) =>
-                    updatePrize(index, "category", text)
-                  }
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Number of Prizes"
-                  placeholderTextColor="#999"
-                  value={prize.numberOfPrizes.toString()}
-                  onChangeText={(text: any) =>
-                    updatePrize(index, "numberOfPrizes", text)
-                  }
-                  keyboardType="numeric"
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Money per Prize"
-                  placeholderTextColor="#999"
-                  value={prize.moneyPerPrize.toString()}
-                  onChangeText={(text: any) =>
-                    updatePrize(index, "moneyPerPrize", text)
-                  }
-                  keyboardType="numeric"
-                />
-              </Card>
-            ))}
-
-            <TouchableOpacity style={styles.addButton} onPress={addPrize}>
-              <Text style={styles.addButtonText}>Add Prize</Text>
-            </TouchableOpacity>
-          </>
-        }
-        data={registeredTeams}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <Text style={styles.teamItem}>{item.teamName}</Text>
+        <TouchableOpacity
+          style={styles.imageButton}
+          onPress={() => pickImage("banner")}
+        >
+          <Text style={styles.imageButtonText}>Update Banner Image</Text>
+        </TouchableOpacity>
+        {(newBannerImage || tournamentData.bannerUrl) && (
+          <Image
+            source={{
+              uri: newBannerImage
+                ? newBannerImage.path
+                : tournamentData.bannerUrl,
+            }}
+            style={styles.previewImage}
+          />
         )}
-        ListEmptyComponent={<Text>No teams have joined yet.</Text>}
-        ListFooterComponent={
-          <>
-            <TouchableOpacity
-              style={styles.generateButton}
-              onPress={generateDemoSchedule}
-            >
-              <Text style={styles.generateButtonText}>Generate Schedule</Text>
-            </TouchableOpacity>
 
-            {tournamentData.format === "groupKnockout" && groups.length > 0 ? (
-              renderGroupStage()
-            ) : (
-              <FootballLoadingIndicator size="big" color="black" />
-            )}
-            {matches.length > 0 && renderMatches()}
+        <TouchableOpacity
+          style={styles.imageButton}
+          onPress={() => pickImage("logo")}
+        >
+          <Text style={styles.imageButtonText}>Update Logo Image</Text>
+        </TouchableOpacity>
+        {(newLogoImage || tournamentData.logoUrl) && (
+          <Image
+            source={{
+              uri: newLogoImage ? newLogoImage.path : tournamentData.logoUrl,
+            }}
+            style={styles.previewImage}
+          />
+        )}
 
-            {tournamentData.format === "groupKnockout" &&
-              matches.length > 0 && (
-                <TouchableOpacity
-                  style={styles.generateButton}
-                  onPress={generateKnockoutMatches}
-                >
-                  <Text style={styles.generateButtonText}>
-                    Generate Knockout Matches
-                  </Text>
-                </TouchableOpacity>
+        <TextInput
+          style={styles.input}
+          placeholder="Tournament Name"
+          placeholderTextColor="#999"
+          value={tournamentData.name}
+          onChangeText={(value) => handleInputChange("name", value)}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Purpose"
+          placeholderTextColor="#999"
+          value={tournamentData.purpose}
+          onChangeText={(value) => handleInputChange("purpose", value)}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Number of Teams"
+          placeholderTextColor="#999"
+          value={tournamentData.numberOfTeams.toString()}
+          onChangeText={(value) => handleInputChange("numberOfTeams", value)}
+          keyboardType="numeric"
+        />
+        <TouchableOpacity
+          style={styles.dateButton}
+          onPress={() => setShowStartDatePicker(true)}
+        >
+          <Text style={styles.dateButtonText}>
+            Start Date: {tournamentData.startDate.toLocaleDateString()}
+          </Text>
+        </TouchableOpacity>
+        {showStartDatePicker && (
+          <DateTimePicker
+            value={tournamentData.startDate}
+            mode="date"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={(event, selectedDate) =>
+              onChangeDate("startDate", event, selectedDate)
+            }
+          />
+        )}
+
+        <TouchableOpacity
+          style={styles.dateButton}
+          onPress={() => setShowEndDatePicker(true)}
+        >
+          <Text style={styles.dateButtonText}>
+            End Date: {tournamentData.endDate.toLocaleDateString()}
+          </Text>
+        </TouchableOpacity>
+        {showEndDatePicker && (
+          <DateTimePicker
+            value={tournamentData.endDate}
+            mode="date"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={(event, selectedDate) =>
+              onChangeDate("endDate", event, selectedDate)
+            }
+          />
+        )}
+        <TextInput
+          style={styles.input}
+          placeholder="Location"
+          placeholderTextColor="#999"
+          value={tournamentData.location}
+          onChangeText={(value) => handleInputChange("location", value)}
+        />
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={tournamentData.format}
+            onValueChange={(itemValue) =>
+              handleInputChange("format", itemValue)
+            }
+            style={styles.picker}
+          >
+            <Picker.Item label="Select Format" value="" />
+            <Picker.Item label="Round Robin" value="roundRobin" />
+            <Picker.Item label="Knockout" value="knockout" />
+            <Picker.Item label="Group Stage + Knockout" value="groupKnockout" />
+          </Picker>
+        </View>
+        <TextInput
+          style={styles.input}
+          placeholder="Budget"
+          placeholderTextColor="#999"
+          value={tournamentData.budget.toString()}
+          onChangeText={(value) => handleInputChange("budget", value)}
+          keyboardType="numeric"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Organizers (comma-separated)"
+          placeholderTextColor="#999"
+          value={
+            Array.isArray(tournamentData.organizers)
+              ? tournamentData.organizers.join(",")
+              : tournamentData.organizers
+          }
+          onChangeText={(value) => handleInputChange("organizers", value)}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Sponsors (comma-separated)"
+          placeholderTextColor="#999"
+          value={
+            Array.isArray(tournamentData.sponsors)
+              ? tournamentData.sponsors.join(",")
+              : tournamentData.sponsors
+          }
+          onChangeText={(value) => handleInputChange("sponsors", value)}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Max Players per Team"
+          placeholderTextColor="#999"
+          value={tournamentData.maxPlayersPerTeam.toString()}
+          onChangeText={(value) =>
+            handleInputChange("maxPlayersPerTeam", value)
+          }
+          keyboardType="numeric"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Max Coaches"
+          placeholderTextColor="#999"
+          value={tournamentData.maxCoaches.toString()}
+          onChangeText={(value) => handleInputChange("maxCoaches", value)}
+          keyboardType="numeric"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Rounds per Match"
+          placeholderTextColor="#999"
+          value={tournamentData.roundsPerMatch.toString()}
+          onChangeText={(value) => handleInputChange("roundsPerMatch", value)}
+          keyboardType="numeric"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Time per Round (in minutes)"
+          placeholderTextColor="#999"
+          value={tournamentData.timePerRound.toString()}
+          onChangeText={(value) => handleInputChange("timePerRound", value)}
+          keyboardType="numeric"
+        />
+        <Text style={styles.sectionHeader}>Prizes</Text>
+        {prizes.map((prize: any, index: any) => (
+          <Card key={index} containerStyle={styles.prizeContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Prize Category"
+              placeholderTextColor="#999"
+              value={prize.category as string}
+              onChangeText={(text: any) => updatePrize(index, "category", text)}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Number of Prizes"
+              placeholderTextColor="#999"
+              value={prize.numberOfPrizes.toString()}
+              onChangeText={(text: any) =>
+                updatePrize(index, "numberOfPrizes", text)
+              }
+              keyboardType="numeric"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Money per Prize"
+              placeholderTextColor="#999"
+              value={prize.moneyPerPrize.toString()}
+              onChangeText={(text: any) =>
+                updatePrize(index, "moneyPerPrize", text)
+              }
+              keyboardType="numeric"
+            />
+          </Card>
+        ))}
+
+        <TouchableOpacity style={styles.addButton} onPress={addPrize}>
+          <Text style={styles.addButtonText}>Add Prize</Text>
+        </TouchableOpacity>
+
+        <FlatList
+          data={registeredTeams}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <Text style={styles.teamItem}>{item.teamName}</Text>
+          )}
+          ListEmptyComponent={<Text>No teams have joined yet.</Text>}
+          ListFooterComponent={
+            <>
+              <TouchableOpacity
+                style={styles.generateButton}
+                onPress={generateDemoSchedule}
+              >
+                <Text style={styles.generateButtonText}>Generate Schedule</Text>
+              </TouchableOpacity>
+
+              {tournamentData.format === "groupKnockout" &&
+              groups.length > 0 ? (
+                renderGroupStage()
+              ) : (
+                <FootballLoadingIndicator size="big" color="black" />
               )}
+              {matches.length > 0 && renderMatches()}
 
-            <TouchableOpacity
-              style={styles.submitButton}
-              onPress={handleSubmit}
-            >
-              <Text style={styles.submitButtonText}>Update Tournament</Text>
-            </TouchableOpacity>
-          </>
-        }
-      />
+              {tournamentData.format === "groupKnockout" &&
+                matches.length > 0 && (
+                  <TouchableOpacity
+                    style={styles.generateButton}
+                    onPress={generateKnockoutMatches}
+                  >
+                    <Text style={styles.generateButtonText}>
+                      Generate Knockout Matches
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+              <TouchableOpacity
+                style={styles.submitButton}
+                onPress={handleSubmit}
+              >
+                <Text style={styles.submitButtonText}>Update Tournament</Text>
+              </TouchableOpacity>
+            </>
+          }
+        />
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -1130,28 +1106,19 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     marginBottom: 5,
   },
-  //   scoreSeparator: {
-  //     marginHorizontal: 10,
-  //   },
   matchResultContainer: {
     flexDirection: "row",
     alignItems: "center",
-    // justifyContent: 'centerTop'
   },
   matchTimestamp: {
     fontSize: 12,
     color: "#666",
     marginTop: 5,
   },
-
   statText: {
     width: 30,
     textAlign: "center",
   },
-  //   container: {
-  //     flex: 1,
-  //     padding: 16,
-  //   },
   card: {
     backgroundColor: "white",
     borderRadius: 8,
@@ -1190,16 +1157,17 @@ const styles = StyleSheet.create({
     height: 16,
     marginRight: 8,
   },
-  //   teamName: {
-  //     fontWeight: "500",
-  //   },
-
+  teamName: {
+    fontWeight: "500",
+    color: "#2c3e50",
+    fontSize: 16,
+    flex: 1,
+  },
   score: {
     fontSize: 18,
     fontWeight: "bold",
     marginHorizontal: 8,
   },
-
   cardContent: {
     padding: 16,
   },
@@ -1211,10 +1179,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    // padding: 16,
-    // backgroundColor: "#f5f5f5",
-    // borderRadius: 8,
-    // marginBottom: 8,
   },
   matchHeader: {
     flexDirection: "row",
@@ -1224,16 +1188,12 @@ const styles = StyleSheet.create({
   matchGroup: {
     fontSize: 14,
     color: "#666",
-    // fontSize: 14,
     fontWeight: "bold",
-    // color: "#666",
   },
   matchRound: {
     fontSize: 14,
     color: "#666",
-    // fontSize: 14,
     fontWeight: "bold",
-    // color: "#666",
   },
   matchTeams: {
     flexDirection: "row",
@@ -1241,7 +1201,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-
   scoreContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -1277,10 +1236,6 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 16,
     textAlign: "center",
-    // fontSize: 20,
-    // fontWeight: "bold",
-    marginTop: 20,
-    // marginBottom: 10,
   },
   groupContainer: {
     marginBottom: 20,
@@ -1291,10 +1246,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    // marginBottom: 15,
     backgroundColor: "#f0f0f0",
     padding: 10,
-    // borderRadius: 5,
   },
   groupHeader: {
     fontSize: 18,
@@ -1302,8 +1255,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     backgroundColor: "#3498db",
     padding: 12,
-    // fontSize: 16,
-    // fontWeight: "bold",
     marginBottom: 5,
   },
   statsHeader: {
@@ -1316,15 +1267,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     flex: 1,
     textAlign: "center",
-
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 5,
-    paddingHorizontal: 10,
-
-    // fontWeight: "bold",
-    width: 30,
-    // textAlign: "center",
   },
   tableBody: {
     backgroundColor: "#fff",
@@ -1342,19 +1284,8 @@ const styles = StyleSheet.create({
   },
   teamColumn: {
     flex: 2,
-    justifyContent: "flex-start",
-
-    // flex: 2,
     flexDirection: "row",
     alignItems: "center",
-  },
-  teamName: {
-    fontWeight: "500",
-    color: "#2c3e50",
-
-    fontSize: 16,
-    // fontWeight: "500",
-    flex: 1,
   },
   points: {
     fontWeight: "bold",

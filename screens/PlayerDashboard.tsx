@@ -187,48 +187,44 @@ export default function PlayerDashboard({
         onClose={() => setModalVisible(false)}
         title="Change Password"
       >
-        {isLoading ? (
-          <FootballLoadingIndicator color="black" size="big" />
-        ) : (
-          <>
-            <TextInput
-              style={styles.input}
-              placeholder="Old Password"
-              secureTextEntry
-              value={oldPassword}
-              onChangeText={setOldPassword}
-            />
-            {oldPasswordError && (
-              <Text style={styles.errorText}>{oldPasswordError}</Text>
-            )}
-            <TextInput
-              style={styles.input}
-              placeholder="New Password"
-              secureTextEntry
-              value={newPassword}
-              onChangeText={setNewPassword}
-            />
-            {newPasswordError && (
-              <Text style={styles.errorText}>{newPasswordError}</Text>
-            )}
-            <TextInput
-              style={styles.input}
-              placeholder="Confirm Password"
-              secureTextEntry
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-            />
-            {confirmPasswordError && (
-              <Text style={styles.errorText}>{confirmPasswordError}</Text>
-            )}
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={handleChangePassword}
-            >
-              <Text style={styles.modalButtonText}>Change Password</Text>
-            </TouchableOpacity>
-          </>
-        )}
+        <>
+          <TextInput
+            style={styles.input}
+            placeholder="Old Password"
+            secureTextEntry
+            value={oldPassword}
+            onChangeText={setOldPassword}
+          />
+          {oldPasswordError && (
+            <Text style={styles.errorText}>{oldPasswordError}</Text>
+          )}
+          <TextInput
+            style={styles.input}
+            placeholder="New Password"
+            secureTextEntry
+            value={newPassword}
+            onChangeText={setNewPassword}
+          />
+          {newPasswordError && (
+            <Text style={styles.errorText}>{newPasswordError}</Text>
+          )}
+          <TextInput
+            style={styles.input}
+            placeholder="Confirm Password"
+            secureTextEntry
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+          />
+          {confirmPasswordError && (
+            <Text style={styles.errorText}>{confirmPasswordError}</Text>
+          )}
+          <TouchableOpacity
+            style={styles.modalButton}
+            onPress={handleChangePassword}
+          >
+            <Text style={styles.modalButtonText}>Change Password</Text>
+          </TouchableOpacity>
+        </>
       </CustomModal>
     </ScrollView>
   );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 
 interface CustomModalProps {
   visible: boolean;
@@ -9,21 +9,37 @@ interface CustomModalProps {
 }
 
 const CustomModal: React.FC<CustomModalProps> = ({ visible, onClose, title, children }) => {
+  const scaleValue = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    if (visible) {
+      Animated.spring(scaleValue, {
+        toValue: 1,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.spring(scaleValue, {
+        toValue: 0,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [visible]);
+
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="fade"
       transparent={true}
       onRequestClose={onClose}
     >
       <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
+        <Animated.View style={[styles.modalContent, { transform: [{ scale: scaleValue }] }]}>
           <Text style={styles.modalTitle}>{title}</Text>
           {children}
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -37,9 +53,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 35,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
@@ -47,26 +63,37 @@ const styles = StyleSheet.create({
       height: 2,
     },
     shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowRadius: 8,
     elevation: 5,
     width: '80%',
+    maxWidth: 400,
   },
   modalTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 16,
     color: '#333',
+    textAlign: 'center',
   },
   closeButton: {
     backgroundColor: '#007AFF',
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
   closeButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
   },
 });
