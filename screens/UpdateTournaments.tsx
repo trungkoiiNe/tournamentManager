@@ -36,9 +36,8 @@ const UpdateTournament = ({
     startDate: tournament.startDate.toDate(),
     endDate: tournament.endDate.toDate(),
   });
-
-  const [newBannerImage, setNewBannerImage] = useState<any>(null);
-  const [newLogoImage, setNewLogoImage] = useState<any>(null);
+  const [newBannerImage, setNewBannerImage] = useState<any>();
+  const [newLogoImage, setNewLogoImage] = useState<any>();
   const [prizes, setPrizes] = useState([] as any);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
@@ -87,6 +86,7 @@ const UpdateTournament = ({
         }
 
         const unsubscribe = fetchRegisteredTeams(tournament.id);
+        // console.log(tournament.teams);
 
         return () => {
           unsubscribe();
@@ -249,6 +249,52 @@ const UpdateTournament = ({
     []
   );
 
+  // const generateDemoSchedule = useCallback(() => {
+  //   if (registeredTeams.length < 2) {
+  //     alert({
+  //       title: "Error",
+  //       message: "Not enough teams to generate a schedule",
+  //       preset: "error",
+  //     });
+  //     return;
+  //   }
+
+  //   let schedule = [];
+  //   setMatches([]);
+
+  //   if (tournamentData.format === "roundRobin") {
+  //     schedule = generateRoundRobinSchedule(registeredTeams);
+  //   } else if (tournamentData.format === "knockout") {
+  //     schedule = generateKnockoutSchedule(registeredTeams);
+  //   } else if (tournamentData.format === "groupKnockout") {
+  //     schedule = generateGroupKnockoutSchedule(registeredTeams);
+  //   }
+
+  //   setDemoSchedule(schedule);
+  //   setMatches(schedule);
+  // }, [registeredTeams, tournamentData.format]);
+  const allMatchesCompleted = useCallback(() => {
+    return matches.every(
+      (match: { score1: string; score2: string }) =>
+        match.score1 !== "" && match.score2 !== ""
+    );
+  }, [matches]);
+  const distributeTeamsToGroups = useCallback(
+    (teams: any[], numberOfGroups: number) => {
+      const newGroups = Array.from({ length: numberOfGroups }, (_, i) => ({
+        name: String.fromCharCode(65 + i),
+        teams: [],
+      }));
+
+      teams.forEach((team: any, index: number) => {
+        newGroups[index % numberOfGroups].teams.push(team);
+      });
+
+      return newGroups;
+    },
+    []
+  );
+
   const generateDemoSchedule = useCallback(() => {
     if (registeredTeams.length < 2) {
       alert({
@@ -259,20 +305,38 @@ const UpdateTournament = ({
       return;
     }
 
-    let schedule = [];
+    let schedule: never[] = [];
     setMatches([]);
 
-    if (tournamentData.format === "roundRobin") {
-      schedule = generateRoundRobinSchedule(registeredTeams);
-    } else if (tournamentData.format === "knockout") {
-      schedule = generateKnockoutSchedule(registeredTeams);
+    // Step 1: Determine groups for each team
+    if (
+      tournamentData.format === "roundRobin" ||
+      tournamentData.format === "knockout"
+    ) {
+      const newGroups = [
+        {
+          name: "All",
+          teams: registeredTeams,
+        },
+      ];
+      setGroups(newGroups);
     } else if (tournamentData.format === "groupKnockout") {
-      schedule = generateGroupKnockoutSchedule(registeredTeams);
+      const numberOfGroups = Math.min(
+        Math.floor(registeredTeams.length / 3),
+        4
+      );
+      const newGroups = distributeTeamsToGroups(
+        registeredTeams,
+        numberOfGroups
+      );
+      setGroups(newGroups);
     }
 
+    // Step 2: Show "Generate Matches" button
+    // This would typically be handled in the component's render method
+
     setDemoSchedule(schedule);
-    setMatches(schedule);
-  }, [registeredTeams, tournamentData.format]);
+  }, [registeredTeams, tournamentData.format, distributeTeamsToGroups]);
 
   const calculateGroupStats = useCallback(() => {
     const newGroups = groups.map((group: any) => {
@@ -282,7 +346,10 @@ const UpdateTournament = ({
       });
 
       matches
-        .filter((match: any) => match.group === group.name)
+        .filter(
+          (match: any) =>
+            match.group === group.name || (group.name === "All" && !match.group)
+        )
         .forEach((match: any) => {
           if (match.score1 !== "" && match.score2 !== "") {
             const score1 = parseInt(match.score1);
@@ -359,26 +426,22 @@ const UpdateTournament = ({
     let round = 1;
     let remainingTeams = adjustedTeams;
 
-    while (remainingTeams.length > 1) {
-      let roundMatches = [];
+    // Generate only the next round of matches
+    let roundMatches = [];
 
-      for (let i = 0; i < remainingTeams.length; i += 2) {
-        roundMatches.push({
-          round: round,
-          team1: remainingTeams[i],
-          team2: remainingTeams[i + 1],
-          score1: "",
-          score2: "",
-          timestamp: null,
-          group: "Knockout",
-        });
-      }
-
-      schedule = [...schedule, ...roundMatches];
-
-      remainingTeams = remainingTeams.filter((_, index) => index % 2 === 0);
-      round++;
+    for (let i = 0; i < remainingTeams.length; i += 2) {
+      roundMatches.push({
+        round: round,
+        team1: remainingTeams[i],
+        team2: remainingTeams[i + 1],
+        score1: "",
+        score2: "",
+        timestamp: null,
+        group: "Knockout",
+      });
     }
+
+    schedule = [...schedule, ...roundMatches];
 
     return schedule;
   }, []);
@@ -428,19 +491,6 @@ const UpdateTournament = ({
     );
   };
 
-  const distributeTeamsToGroups = (teams: any, numberOfGroups: any) => {
-    const newGroups = Array.from({ length: numberOfGroups }, (_, i) => ({
-      name: String.fromCharCode(65 + i),
-      teams: [] as any,
-    }));
-
-    teams.forEach((team: any, index: any) => {
-      newGroups[index % numberOfGroups].teams.push(team);
-    });
-
-    return newGroups;
-  };
-
   const generateGroupKnockoutSchedule = useCallback(
     (teams: any) => {
       const numberOfGroups = Math.min(Math.floor(teams.length / 3), 4);
@@ -466,6 +516,16 @@ const UpdateTournament = ({
     },
     [generateRoundRobinSchedule]
   );
+  const generateRandomScores = useCallback(() => {
+    setMatches((prevMatches: any[]) =>
+      prevMatches.map((match) => ({
+        ...match,
+        score1: Math.floor(Math.random() * 5).toString(),
+        score2: Math.floor(Math.random() * 5).toString(),
+      }))
+    );
+    calculateGroupStats();
+  }, [calculateGroupStats]);
 
   const swapTeams = useCallback(
     (groupIndex1: any, teamIndex1: any, groupIndex2: any, teamIndex2: any) => {
@@ -482,18 +542,102 @@ const UpdateTournament = ({
   );
 
   const generateMatches = useCallback(() => {
-    const newMatches = generateGroupMatches(
-      groups,
-      generateRoundRobinSchedule
-    ).map((match: any) => ({
-      ...match,
-      timestamp: null,
-      score1: "",
-      score2: "",
-    }));
+    let newMatches: any[] = [];
+
+    if (tournamentData.format === "roundRobin") {
+      newMatches = generateRoundRobinSchedule(groups[0].teams).map((match) => ({
+        ...match,
+        group: "All",
+      }));
+    } else if (tournamentData.format === "knockout") {
+      newMatches = generateKnockoutSchedule(groups[0].teams).map((match) => ({
+        ...match,
+        group: "All",
+      }));
+    } else if (tournamentData.format === "groupKnockout") {
+      groups.forEach((group: { teams: any; name: any }) => {
+        const groupMatches = generateRoundRobinSchedule(group.teams).map(
+          (match) => ({
+            ...match,
+            group: group.name,
+          })
+        );
+        newMatches = [...newMatches, ...groupMatches];
+      });
+    }
+
     setMatches(newMatches);
     calculateGroupStats();
-  }, [groups, generateRoundRobinSchedule, calculateGroupStats]);
+  }, [
+    groups,
+    tournamentData.format,
+    generateRoundRobinSchedule,
+    generateKnockoutSchedule,
+    calculateGroupStats,
+  ]);
+
+  const getQualifiedTeams = useCallback(() => {
+    return groups.flatMap((group: any) =>
+      group.teams
+        .sort((a: any, b: any) => {
+          if (b.stats.Pts === a.stats.Pts) {
+            return b.stats.GD - a.stats.GD;
+          }
+          return b.stats.Pts - a.stats.Pts;
+        })
+        .slice(0, 2)
+    );
+  }, [groups]);
+  const getWinningTeams = useCallback(() => {
+    return matches
+      .filter((match: any) => match.score1 !== "" && match.score2 !== "")
+      .map((match: any) => {
+        const score1 = parseInt(match.score1);
+        const score2 = parseInt(match.score2);
+        if (score1 > score2) {
+          return match.team1;
+        } else if (score2 > score1) {
+          return match.team2;
+        } else {
+          // Handle the case where scores are equal (draw)
+          // You might want to decide how to handle draws, e.g., by GD or other criteria
+          return match.team1; // Default to team1 for now
+        }
+      });
+  }, [matches]);
+  const getTopTeams = useCallback(
+    (count: any) => {
+      return groups[0].teams
+        .sort(
+          (a: { stats: { Pts: number } }, b: { stats: { Pts: number } }) =>
+            b.stats.Pts - a.stats.Pts
+        )
+        .slice(0, count);
+    },
+    [groups]
+  );
+
+  const generateNextMatches = useCallback(() => {
+    if (tournamentData.format === "groupKnockout") {
+      const qualifiedTeams = getQualifiedTeams();
+      const knockoutMatches = generateKnockoutSchedule(qualifiedTeams);
+      setMatches((prevMatches: any) => [...prevMatches, ...knockoutMatches]);
+    } else if (tournamentData.format === "knockout") {
+      const winningTeams = getWinningTeams();
+      const nextRoundMatches = generateKnockoutSchedule(winningTeams);
+      setMatches((prevMatches: any) => [...prevMatches, ...nextRoundMatches]);
+    } else if (tournamentData.format === "roundRobin") {
+      const topTeams = getTopTeams(2);
+      const finalMatch = generateKnockoutSchedule(topTeams);
+      setMatches((prevMatches: any) => [...prevMatches, ...finalMatch]);
+    }
+  }, [
+    tournamentData.format,
+    getQualifiedTeams,
+    getWinningTeams,
+    getTopTeams,
+    generateKnockoutSchedule,
+  ]);
 
   const updateMatchResult = useCallback(
     (index: any, field: any, value: any) => {
@@ -566,8 +710,6 @@ const UpdateTournament = ({
   };
 
   const renderGroupStage = useCallback(() => {
-    if (tournamentData.format === "knockout") return null;
-
     return (
       <View style={styles.groupStageContainer}>
         <Text style={styles.stageHeader}>
@@ -600,9 +742,21 @@ const UpdateTournament = ({
             {renderGroupTeams(group, groupIndex, swapTeams)}
           </LinearGradient>
         ))}
+        <TouchableOpacity
+          style={styles.generateMatchesButton}
+          onPress={generateMatches}
+        >
+          <Text style={styles.generateMatchesButtonText}>Generate Matches</Text>
+        </TouchableOpacity>
       </View>
     );
-  }, [groups, tournamentData.format, renderGroupTeams, swapTeams]);
+  }, [
+    groups,
+    tournamentData.format,
+    renderGroupTeams,
+    swapTeams,
+    generateMatches,
+  ]);
 
   const renderMatches = useCallback(() => {
     if (!matches || matches.length === 0) {
@@ -910,25 +1064,41 @@ const UpdateTournament = ({
                 <Text style={styles.generateButtonText}>Generate Schedule</Text>
               </TouchableOpacity>
 
-              {tournamentData.format === "groupKnockout" &&
-              groups.length > 0 ? (
+              {groups.length > 0 ? (
                 renderGroupStage()
               ) : (
                 <FootballLoadingIndicator size="big" color="black" />
               )}
-              {matches.length > 0 && renderMatches()}
 
-              {tournamentData.format === "groupKnockout" &&
-                matches.length > 0 && (
+              {matches.length > 0 && renderMatches()}
+              {matches.length > 0 && (
+                <>
                   <TouchableOpacity
-                    style={styles.generateButton}
-                    onPress={generateKnockoutMatches}
+                    style={styles.randomScoresButton}
+                    onPress={generateRandomScores}
                   >
-                    <Text style={styles.generateButtonText}>
-                      Generate Knockout Matches
+                    <Text style={styles.randomScoresButtonText}>
+                      Generate Random Scores
                     </Text>
                   </TouchableOpacity>
-                )}
+                  {/* {renderMatches()} */}
+                </>
+              )}
+
+              {matches.length > 0 && allMatchesCompleted() && (
+                <TouchableOpacity
+                  style={styles.generateButton}
+                  onPress={generateNextMatches}
+                >
+                  <Text style={styles.generateButtonText}>
+                    {tournamentData.format === "groupKnockout"
+                      ? "Generate Knockout Matches"
+                      : tournamentData.format === "knockout"
+                      ? "Generate Next Round"
+                      : "Generate Final Match"}
+                  </Text>
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity
                 style={styles.submitButton}
@@ -1296,6 +1466,30 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 4,
     marginRight: 8,
+  },
+  generateMatchesButton: {
+    backgroundColor: "#2ecc71",
+    padding: 15,
+    alignItems: "center",
+    borderRadius: 10,
+    marginTop: 20,
+  },
+  generateMatchesButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  randomScoresButton: {
+    backgroundColor: "#e74c3c",
+    padding: 15,
+    alignItems: "center",
+    borderRadius: 10,
+    marginBottom: 20,
+  },
+  randomScoresButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
   },
 });
 

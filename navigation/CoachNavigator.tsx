@@ -5,9 +5,13 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import HomeRouter from "../routers/HomeRouter";
 import ProfileRouter from "../routers/ProfileRouter";
 import TeamRouter from "../routers/TeamRouter";
+import NotificationButton from "../components/NotificationButton";
 
 const Tab = createBottomTabNavigator();
 export default function CoachNavigator() {
+  function renderNotificationButton() {
+    return <NotificationButton />;
+  }
   return (
     <PaperProvider>
       <Tab.Navigator
@@ -25,7 +29,8 @@ export default function CoachNavigator() {
 
             return <Icon name={iconName ?? ""} size={size} color={color} />;
           },
-          headerShown: false,
+          // headerShown: false,
+          headerRight: () => renderNotificationButton(),
         })}
       >
         <Tab.Screen name="Home" component={HomeRouter} />

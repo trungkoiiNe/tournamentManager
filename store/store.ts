@@ -1,8 +1,9 @@
-import { create } from "zustand";
+import { alert, toast } from "@baronha/ting";
 import firestore from "@react-native-firebase/firestore";
 import storage from "@react-native-firebase/storage";
+import { create } from "zustand";
 import { useAuthStore } from "./authStore";
-import { alert } from "@baronha/ting";
+
 interface TeamStats {
   P: number;
   W: number;
@@ -15,10 +16,6 @@ interface GroupTeam extends Team {
   stats: TeamStats;
 }
 
-interface Group {
-  name: string;
-  teams: any[];
-}
 interface User {
   id: string;
   role: string;
@@ -76,11 +73,13 @@ interface Team {
 }
 
 interface Store {
+  darkmode: boolean;
   users: User[];
   tournaments: Tournament[];
   teams: Team[];
   isLoading: boolean;
   error: string | null;
+  toggleDarkMode: () => void;
   addUser: (user: Omit<User, "id">) => Promise<void>;
   updateUser: (user: User) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
@@ -114,6 +113,7 @@ interface Store {
   ) => Promise<void>;
   fetchTeamMembers: (teamId: string) => Promise<User[]>;
   invitePlayersToTeam: (teamId: string, playerIds: string[]) => Promise<void>;
+  requestJoinTeam: (playerId: string, teamId: string) => Promise<void>;
   fetchAllPlayers: () => Promise<User[]>;
   pendingInvitations: PendingPlayer[];
   fetchPendingInvitations: () => Promise<void>;
@@ -122,6 +122,7 @@ interface Store {
     response: "Approved" | "Declined"
   ) => Promise<void>;
   fetchTeamsSpecifiedCoachId: (coachId: string) => void;
+  fetchTeamsSpecifiedPlayerId: (playerId: string) => void;
   joinTournament: (tournamentId: string, teamId: string) => Promise<void>;
   registeredTeams: Team[];
   fetchRegisteredTeams: (tournamentId: string) => () => void;
@@ -147,11 +148,12 @@ interface Store {
     currentRound: number
   ) => { updatedSchedule: any[]; nextRound: number; winner?: any };
   fetchTournamentSchedules: (tournamentId: string) => Promise<any[]>;
+  kickTeamMember: (teamId: string, playerId: string) => Promise<void>;
 }
 
 export const useStore = create<Store>((set, get) => ({
   pendingInvitations: [],
-
+  darkmode: false,
   users: [],
   tournaments: [],
   teams: [],
@@ -252,193 +254,6 @@ export const useStore = create<Store>((set, get) => ({
     }
   }, // ... existing code ...
 
-  //     updateTournament: async (
-  //         tournament: Tournament,
-  //         prizes: Prize[]
-  //     ): Promise<void> => {
-  //         set({isLoading: true, error: null});
-  //         try {
-  //             const tournamentRef = firestore()
-  //                 .collection("tournaments")
-  //                 .doc(tournament.id);
-  //             const batch = firestore().batch();
-
-  //             // Update tournament data
-  //             batch.update(tournamentRef, tournament);
-
-  //             // Update prizes
-  //             const prizesCollection = tournamentRef.collection("prizes");
-  //             const existingPrizesSnapshot = await prizesCollection.get();
-
-  //             // Delete existing prizes
-  //             existingPrizesSnapshot.docs.forEach((doc) => {
-  //                 batch.delete(doc.ref);
-  //             });
-
-  //             // Add new prizes
-  //             prizes.forEach((prize) => {
-  //                 const newPrizeRef = prizesCollection.doc();
-  //                 batch.set(newPrizeRef, prize);
-  //             });
-
-  //             await batch.commit();
-
-  //             // Update local state
-  //             set((state) => ({
-  //                 tournaments: state.tournaments.map((t) =>
-  //                     t.id === tournament.id ? tournament : t
-  //                 ),
-  //             }));
-  //         } catch (error) {
-  //             console.error("Error updating tournament:", error);
-  //             set({error: "Failed to update tournament"});
-  //             throw error;
-  //         } finally {
-  //             set({isLoading: false});
-  //         }
-  //   },
-  //   updateTournament: async (
-  //     tournament: Tournament,
-  //     prizes: Prize[],
-  //     schedules: any[],
-  //     groups: any []
-  //     // Add this parameter
-  //   ): Promise<void> => {
-  //     set({ isLoading: true, error: null });
-  //     try {
-  //       const tournamentRef = firestore()
-  //         .collection("tournaments")
-  //         .doc(tournament.id);
-  //       const batch = firestore().batch();
-  //       batch.update(tournamentRef, {
-  //         ...tournament,
-  //         groups: groups.reduce((acc, group) => {
-  //           acc[group.name] = group.teams.map((team) => team.id);
-  //           return acc;
-  //         }, {}),
-  //       });
-
-  //       // Update tournament data
-  //       batch.update(tournamentRef, tournament);
-
-  //       // Update prizes
-  //       const prizesCollection = tournamentRef.collection("prizes");
-  //       const existingPrizesSnapshot = await prizesCollection.get();
-
-  //       // Delete existing prizes
-  //       existingPrizesSnapshot.docs.forEach((doc) => {
-  //         batch.delete(doc.ref);
-  //       });
-
-  //       // Add new prizes
-  //       prizes.forEach((prize) => {
-  //         const newPrizeRef = prizesCollection.doc();
-  //         batch.set(newPrizeRef, prize);
-  //       });
-
-  //       // Update schedules
-  //       const schedulesCollection = tournamentRef.collection("schedules");
-  //       const existingSchedulesSnapshot = await schedulesCollection.get();
-
-  //       // Delete existing schedules
-  //       existingSchedulesSnapshot.docs.forEach((doc) => {
-  //         batch.delete(doc.ref);
-  //       });
-
-  //       // Add new schedules
-  //       schedules.forEach((schedule) => {
-  //         const newScheduleRef = schedulesCollection.doc();
-  //         batch.set(newScheduleRef, schedule);
-  //       });
-
-  //       await batch.commit();
-
-  //       // Update local state
-  //       set((state) => ({
-  //         tournaments: state.tournaments.map((t) =>
-  //           t.id === tournament.id ? { ...tournament, groups: groups } : t
-  //         ),
-  //       }));
-  //     } catch (error) {
-  //       console.error("Error updating tournament:", error);
-  //       set({ error: "Failed to update tournament" });
-  //       throw error;
-  //     } finally {
-  //       set({ isLoading: false });
-  //     }
-  //   },
-  //   updateTournament: async (
-  //     tournament: Tournament,
-  //     prizes: Prize[],
-  //     schedules: any[],
-  //     groups: { [groupName: string]: { [teamId: string]: Team } }
-  //   ): Promise<void> => {
-  //     set({ isLoading: true, error: null });
-  //     try {
-  //       const tournamentRef = firestore()
-  //         .collection("tournaments")
-  //         .doc(tournament.id);
-  //       const batch = firestore().batch();
-  //       batch.update(tournamentRef, {
-  //         ...tournament,
-  //         groups: Object.entries(groups).reduce(
-  //           (acc, [groupName, groupTeams]) => {
-  //             acc[groupName] = Object.keys(groupTeams);
-  //             return acc;
-  //           },
-  //           {}
-  //         ),
-  //       });
-
-  //       // Update tournament data
-  //       batch.update(tournamentRef, tournament);
-
-  //       // Update prizes
-  //       const prizesCollection = tournamentRef.collection("prizes");
-  //       const existingPrizesSnapshot = await prizesCollection.get();
-
-  //       // Delete existing prizes
-  //       existingPrizesSnapshot.docs.forEach((doc) => {
-  //         batch.delete(doc.ref);
-  //       });
-
-  //       // Add new prizes
-  //       prizes.forEach((prize) => {
-  //         const newPrizeRef = prizesCollection.doc();
-  //         batch.set(newPrizeRef, prize);
-  //       });
-
-  //       // Update schedules
-  //       const schedulesCollection = tournamentRef.collection("schedules");
-  //       const existingSchedulesSnapshot = await schedulesCollection.get();
-
-  //       // Delete existing schedules
-  //       existingSchedulesSnapshot.docs.forEach((doc) => {
-  //         batch.delete(doc.ref);
-  //       });
-
-  //       // Add new schedules
-  //       schedules.forEach((schedule) => {
-  //         const newScheduleRef = schedulesCollection.doc();
-  //         batch.set(newScheduleRef, schedule);
-  //       });
-
-  //       await batch.commit();
-
-  //       // Update local state
-  //       set((state) => ({
-  //         tournaments: state.tournaments.map((t) =>
-  //           t.id === tournament.id ? { ...tournament, groups } : t
-  //         ),
-  //       }));
-  //     } catch (error) {
-  //       console.error("Error updating tournament:", error);
-  //       set({ error: "Failed to update tournament" });
-  //       throw error;
-  //     } finally {
-  //       set({ isLoading: false });
-  //     }
-  //   },
   updateTournament: async (
     tournament: Tournament,
     prizes: Prize[],
@@ -453,25 +268,31 @@ export const useStore = create<Store>((set, get) => ({
       const batch = firestore().batch();
 
       // Update tournament data including groups with team stats
-      const updatedGroups = groups.reduce((acc: any, group: any) => {
-        acc[group.name] = group.teams.reduce((teamAcc: any, team: any) => {
-          if (team?.id && team?.teamName) {
-            teamAcc[team.id] = {
-              id: team.id,
-              teamName: team.teamName,
-              stats: team.stats || {},
-            };
-          }
-          return teamAcc;
-        }, {});
+      const updatedGroups = groups.reduce((acc, group) => {
+        acc[group.name] = group.teams.reduce(
+          (
+            teamAcc: { [x: string]: { id: any; teamName: any; stats: any } },
+            team: { id: string | number; teamName: any; stats: any }
+          ) => {
+            if (team?.id && team?.teamName) {
+              teamAcc[team.id] = {
+                id: team.id,
+                teamName: team.teamName,
+                stats: team.stats || {},
+              };
+            }
+            return teamAcc;
+          },
+          {}
+        );
         return acc;
       }, {} as { [groupName: string]: { [teamId: string]: GroupTeam } });
 
       // Remove undefined values from tournament object
       const cleanTournament = Object.entries(tournament).reduce(
-        (acc: any, [key, value]: any) => {
+        (acc, [key, value]) => {
           if (value !== undefined) {
-            acc[key]  = value;
+            acc[key] = value;
           }
           return acc;
         },
@@ -756,12 +577,28 @@ export const useStore = create<Store>((set, get) => ({
     if (!user) return;
 
     try {
-      const snapshot = await firestore()
-        .collection("pendingPlayers")
-        .where("playerId", "==", user.email)
-        .get();
-
-      const invitations = snapshot.docs.map(
+      let snapshot = null;
+      switch (user.role) {
+        case "player":
+          snapshot = await firestore()
+            .collection("pendingPlayers")
+            .where("playerId", "==", user.email)
+            .get();
+          break;
+        case "coach":
+          const coachid = await firestore()
+            .collection("teams")
+            .where("coachId", "==", user.email)
+            .get();
+          // console.log(coachid);
+          snapshot = await firestore()
+            .collection("pendingPlayers")
+            .where("teamId", "==", coachid.docs[0].id)
+            .get();
+        default:
+          break;
+      }
+      const invitations = snapshot?.docs.map(
         (doc) => ({ id: doc.id, ...doc.data() } as PendingPlayer)
       );
       set({ pendingInvitations: invitations });
@@ -825,6 +662,37 @@ export const useStore = create<Store>((set, get) => ({
       }
     } catch (error) {
       console.error("Error responding to invitation:", error);
+      throw error;
+    }
+  },
+  requestJoinTeam: async (playerId: string, teamId: string): Promise<void> => {
+    try {
+      const pendingPlayersRef = firestore().collection("pendingPlayers");
+
+      // Check if a request already exists
+      const existingRequests = await pendingPlayersRef
+        .where("playerId", "==", playerId)
+        .where("teamId", "==", teamId)
+        .where("type", "==", "requested")
+        .get();
+
+      if (!existingRequests.empty) {
+        throw new Error("A request to join this team already exists.");
+      }
+
+      // Create a new request
+      await pendingPlayersRef.add({
+        playerId: playerId,
+        teamId: teamId,
+        status: "Pending",
+        type: "requested",
+        timestamp: firestore.FieldValue.serverTimestamp(),
+      });
+
+      // You might want to update the local state here if necessary
+      // For example, you could add this request to a list of pending requests
+    } catch (error) {
+      console.error("Error requesting to join team:", error);
       throw error;
     }
   },
@@ -1085,6 +953,41 @@ export const useStore = create<Store>((set, get) => ({
       set({ isLoading: false });
     }
   },
+  fetchTeamsSpecifiedPlayerId: async (playerId: string) => {
+    return firestore()
+      .collection("teams")
+      .where("players", "array-contains", playerId)
+      .onSnapshot((querySnapshot) => {
+        const teams = querySnapshot.docs.map(
+          (doc) => ({ id: doc.id, ...doc.data() } as Team)
+        );
+        console.log(teams);
+        set({ teams });
+      });
+  },
+  toggleDarkMode: () => {
+    set((state) => ({
+      darkmode: !state.darkmode,
+    }));
+  },
+  kickTeamMember: async (teamId: string, playerId: string) => {
+    try {
+      const teamRef = firestore().collection("teams").doc(teamId);
+      const teamDoc = await teamRef.get();
+      const teamData = teamDoc.data() as Team;
+      const updatedTeamMembers = teamData.players.filter(
+        (memberId: string) => memberId !== playerId
+      );
+      await teamRef.update({ players: updatedTeamMembers });
+      toast({
+        title: "Kick thanh cong",
+        message: "Đã đưa ra để bỏ thanh cong",
+      });
+    } catch (error) {
+      console.error("Error kicking team member:", error);
+      throw error;
+    }
+  },
 }));
 const generateRoundRobinSchedule = (teams: Team[]) => {
   let schedule = [];
@@ -1144,7 +1047,7 @@ const generateGroupKnockoutSchedule = (teams: Team[]): any[] => {
   const numberOfGroups = Math.min(Math.floor(teams.length / 3), 4);
   const groups = Array.from({ length: numberOfGroups }, (_, i) => ({
     name: String.fromCharCode(65 + i),
-    teams: [] as any,
+    teams: <any>[],
   }));
 
   // Distribute teams to groups

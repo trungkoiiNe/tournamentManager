@@ -4,6 +4,9 @@ import firestore from "@react-native-firebase/firestore";
 import { toast } from "@baronha/ting";
 import { Audio } from "expo-av";
 import * as Speech from "expo-speech";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { LoginManager, AccessToken } from "react-native-fbsdk-next";
+
 const playSound = async (soundFile: any) => {
   try {
     const { sound } = await Audio.Sound.createAsync(soundFile);
@@ -46,6 +49,8 @@ type AuthState = {
   alertError: (error: any) => void;
   updatePassword: (password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  googleSignIn: (userData: any) => Promise<void>;
+  facebookSingIn: (userData: any) => Promise<void>;
 };
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -67,7 +72,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         const userData = userDoc.data();
         set({ user: { uid, email: lowercaseEmail, role: userData?.role } });
 
-        await speakGreeting("David");
+        await speakGreeting(userData?.name ? userData.name : "User");
         toast({
           title: "Đăng nhập thành công 😎",
           message: `Chào mừng ${email}`,
@@ -119,6 +124,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await auth().signOut();
       set({ user: null });
+      await GoogleSignin.revokeAccess();
+      await GoogleSignin.signOut();
+      await LoginManager.logOut();
       await playSound(require("../assets/out.mp3"));
 
       toast({
@@ -127,7 +135,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
       // console.log(user);
     } catch (error) {
-      await playSound(require("../assets/error.mp3"));
+      // await playSound(require("../assets/error.mp3"));
       // console.error('Logout error:', error);
       // throw error;
     }
@@ -171,6 +179,87 @@ export const useAuthStore = create<AuthState>((set) => ({
         title: "Đặt lại mật khẩu thất bại 😎",
         message: "Mật khẩu đã được gửi đến email của bạn",
       });
+    }
+  },
+  googleSignIn: async (userData: any) => {
+    try {
+      const lowercaseEmail = userData.user.email.toLowerCase();
+      const googleCredential = auth.GoogleAuthProvider.credential(
+        userData.idToken
+      );
+      const userdata = (await auth().signInWithCredential(googleCredential))
+        .user;
+      console.log(userdata);
+      const uid = userdata?.uid;
+      const displayName = userdata?.displayName;
+      const photoUrl = userdata?.photoURL;
+      const familyName = userData?.user.familyName;
+      const givenName = userData?.user.givenName;
+      await firestore()
+        .collection("TournamentManager")
+        .doc(lowercaseEmail)
+        .set({ role: "player", avatar: photoUrl, name: displayName });
+      set({
+        user: {
+          uid,
+          email: lowercaseEmail,
+          role: "player",
+          name: displayName,
+        },
+      });
+      await playSound(require("../assets/start.mp3"));
+
+      toast({
+        title: "Đăng nhật thành công 😎",
+        message: `Chào mừng ${displayName}`,
+      });
+      await speakGreeting(
+        familyName ? `${familyName} ${givenName}` : "User"
+      );
+    } catch (error) {
+      // await playSound(require("../assets/error.mp3"));
+      // console.error("Register error:", error);
+      // throw error;
+    }
+  },
+  facebookSingIn: async (userData: any) => {
+    try {
+      // const lowercaseEmail = userData.email.toLowerCase();
+      const facebookCredential = auth.FacebookAuthProvider.credential(
+        userData.accessToken
+      );
+      const userdata = (await auth().signInWithCredential(facebookCredential))
+        .user;
+      console.log(userdata);
+      const lowercaseEmail = userdata?.email?.toLowerCase();
+      const uid = userdata?.uid;
+      const displayName = userdata?.displayName;
+      const photoUrl = userdata?.photoURL;
+      await firestore()
+        .collection("TournamentManager")
+        .doc(lowercaseEmail)
+        .set({ role: "player", avatar: photoUrl, name: displayName });
+      set({
+        user: {
+          uid,
+          email: lowercaseEmail,
+          role: "player",
+          name: displayName,
+          avatar: photoUrl,
+        },
+      });
+      await playSound(require("../assets/start.mp3"));
+
+      toast({
+        title: "Đăng nhật thành công 😎",
+        message: `Chào mừng ${displayName}`,
+      });
+      await speakGreeting(displayName ? displayName : "User");
+    } catch (error) {
+      // await playSound(require("../assets/error.mp3"));
+
+      console.error("Register error:", error);
+      throw error;
     }
   },
 }));

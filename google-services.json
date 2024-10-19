@@ -12,7 +12,20 @@
           "package_name": "com.koii.tournamentmanager"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "499744196132-96imd7dreuku9plm650j7ji90mdidf1h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.koii.tournamentmanager",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "499744196132-pt1g8t7ak3d12pbuvvsj2pd8va3nmv2t.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyASZ5H-1id4Y1EXxD0aFIXEeG34uHkf3zg"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "499744196132-pt1g8t7ak3d12pbuvvsj2pd8va3nmv2t.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

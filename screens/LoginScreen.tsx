@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Image,
   ImageBackground,
@@ -8,10 +8,21 @@ import {
   TouchableOpacity,
   View,
   Modal,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  Animated,
+  Easing,
 } from "react-native";
 import { useAuthStore } from "../store/authStore";
 import FootballLoadingIndicator from "../components/FootballLoadingIndicator";
 import { alert } from "@baronha/ting";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { LoginManager, AccessToken } from "react-native-fbsdk-next";
+
+const { width, height } = Dimensions.get("window");
 
 const LoginScreen = ({ navigation }: { navigation: any }) => {
   const [loading, setLoading] = useState(false);
@@ -23,24 +34,78 @@ const LoginScreen = ({ navigation }: { navigation: any }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const resetPassword = useAuthStore((state) => state.resetPassword);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const googleSignIn = useAuthStore((state) => state.googleSignIn);
+  const facebookSingIn = useAuthStore((state) => state.facebookSingIn);
+  async function onGoogleButtonPress() {
+    // Check if your device supports Google Play
+    if ((await GoogleSignin.hasPlayServices()) === false) {
+      console.log("haha");
+    }
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    // Get the users ID token
+    const userInfo = await GoogleSignin.signIn();
+    // console.log(userInfo);
+    await googleSignIn(userInfo.data);
+
+    // Sign-in the user with the credential
+    // return auth().signInWithCredential(googleCredential);
+  }
+  async function onFacebookButtonPress() {
+    const result = await LoginManager.logInWithPermissions([
+      "public_profile",
+      "email",
+    ]);
+
+    if (result.isCancelled) {
+      // throw "User cancelled the login process";
+    }
+
+    // Once signed in, get the users AccessToken
+    const data = await AccessToken.getCurrentAccessToken();
+    // const email= await AccessToken.getCurrentAccessToken().then((token)
+    console.log(data);
+    facebookSingIn(data);
+    if (!data) {
+      // throw "Something went wrong obtaining access token";
+    }
+  }
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId:
+        "499744196132-pt1g8t7ak3d12pbuvvsj2pd8va3nmv2t.apps.googleusercontent.com",
+    });
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1000,
+      easing: Easing.ease,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
   const handleResetPassword = async () => {
     try {
       setIsLoading(true);
       await resetPassword(email);
       setIsLoading(false);
       setModalVisible(false);
+      alert({
+        title: "Success",
+        message: "Password reset email sent. Please check your inbox.",
+        preset: "done",
+      });
     } catch (error) {
       setIsLoading(false);
       alert({
-        title: "Lỗi",
-        message: "An unknown error occurred",
+        title: "Error",
+        message: "Failed to send reset email. Please try again.",
         preset: "error",
       });
     }
   };
-  // const user = useAuthStore((state) => state.user);
+
   const validateEmail = (email: string) => {
-    // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const rg = /[A-Z0-9._%+-]+@[A-Z0-9-]+.+.[A-Z]{2,4}/gim;
     return rg.test(email);
   };
@@ -73,22 +138,28 @@ const LoginScreen = ({ navigation }: { navigation: any }) => {
         switch (error.code) {
           case "auth/invalid-credential":
             alert({
-              title: "Lỗi",
-              message: "Email hoặc mật khẩu không đúng",
+              title: "Error",
+              message: "Invalid email or password",
               preset: "error",
             });
             break;
           case "auth/too-many-requests":
             alert({
-              title: "Lỗi",
-              message: "Quá nhiều lần thử đăng nhập, vui lòng thử lại sau",
+              title: "Error",
+              message: "Too many login attempts. Please try again later.",
               preset: "error",
             });
             break;
+          default:
+            alert({
+              title: "Error",
+              message: "An unknown error occurred",
+              preset: "error",
+            });
         }
       } else {
         alert({
-          title: "Lỗi",
+          title: "Error",
           message: "An unknown error occurred",
           preset: "error",
         });
@@ -101,103 +172,174 @@ const LoginScreen = ({ navigation }: { navigation: any }) => {
       source={require("../assets/football-field.jpg")}
       style={styles.backgroundImage}
     >
-      {loading === true ? (
-        <FootballLoadingIndicator color="black" size="big" />
-      ) : (
-        <View style={styles.overlay}>
-          <View style={styles.container}>
-            <Image
-              source={require("../assets/football-icon.png")}
-              style={styles.icon}
-            />
-            <Text style={styles.title}>Football Login</Text>
-            <TextInput
-              style={[styles.input, emailError ? styles.inputError : null]}
-              placeholder="Email"
-              placeholderTextColor="#999"
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                setEmailError("");
-              }}
-            />
-            {emailError ? (
-              <Text style={styles.errorText}>{emailError}</Text>
-            ) : null}
-            <TextInput
-              style={[styles.input, passwordError ? styles.inputError : null]}
-              placeholder="Password"
-              placeholderTextColor="#999"
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                setPasswordError("");
-              }}
-              secureTextEntry
-            />
-            {passwordError ? (
-              <Text style={styles.errorText}>{passwordError}</Text>
-            ) : null}
-            <TouchableOpacity style={styles.button} onPress={handleLogin}>
-              <Text style={styles.buttonText}>Login</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.registerButton]}
-              onPress={() => navigation.navigate("Register")}
-            >
-              <Text style={styles.buttonText}>Register</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.registerButton]}
-              onPress={() => setModalVisible(true)}
-            >
-              <Text style={styles.buttonText}>Reset Password</Text>
-            </TouchableOpacity>
-          </View>
-          <Modal
-            animationType="slide"
-            transparent={true}
-            visible={modalVisible}
-            onRequestClose={() => {
-              setModalVisible(!modalVisible);
-            }}
-          >
-            <View style={styles.modalContainer}>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>Reset Password</Text>
-                {isLoading ? (
-                  <FootballLoadingIndicator size="small" color="black" />
-                ) : (
-                  <>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="Email"
-                      placeholderTextColor="#999"
-                      value={email}
-                      onChangeText={(text) => setEmail(text)}
-                    />
-                    <TouchableOpacity
-                      style={styles.modalButton}
-                      onPress={handleResetPassword}
-                    >
-                      <Text style={styles.modalButtonText}>Reset Password</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.modalButton,
-                        { marginTop: 10, backgroundColor: "#ccc" },
-                      ]}
-                      onPress={() => setModalVisible(false)}
-                    >
-                      <Text style={styles.modalButtonText}>Cancel</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.container}
+      >
+        <LinearGradient
+          colors={["rgba(0,0,0,0.6)", "rgba(0,0,0,0.8)"]}
+          style={styles.overlay}
+        >
+          {loading ? (
+            <FootballLoadingIndicator color="white" size="big" />
+          ) : (
+            <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+              <Image
+                source={require("../assets/football-icon.png")}
+                style={styles.icon}
+              />
+              <Text style={styles.title}>FTM Login</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons
+                  name="mail-outline"
+                  size={24}
+                  color="#fff"
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={[styles.input, emailError ? styles.inputError : null]}
+                  placeholder="Email"
+                  placeholderTextColor="#ccc"
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    setEmailError("");
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
               </View>
-            </View>
-          </Modal>
+              {emailError ? (
+                <Text style={styles.errorText}>{emailError}</Text>
+              ) : null}
+              <View style={styles.inputContainer}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={24}
+                  color="#fff"
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={[
+                    styles.input,
+                    passwordError ? styles.inputError : null,
+                  ]}
+                  placeholder="Password"
+                  placeholderTextColor="#ccc"
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    setPasswordError("");
+                  }}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeIcon}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-outline" : "eye-off-outline"}
+                    size={24}
+                    color="#fff"
+                  />
+                </TouchableOpacity>
+              </View>
+              {passwordError ? (
+                <Text style={styles.errorText}>{passwordError}</Text>
+              ) : null}
+              <TouchableOpacity style={styles.button} onPress={handleLogin}>
+                <Text style={styles.buttonText}>Login</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.registerButton]}
+                onPress={() => navigation.navigate("Register")}
+              >
+                <Text style={styles.buttonText}>Register</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.forgotPassword}
+                onPress={() => setModalVisible(true)}
+              >
+                <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+              </TouchableOpacity>
+              <View style={styles.socialButtonsContainer}>
+                <TouchableOpacity
+                  style={[styles.socialButton, styles.googleButton]}
+                  onPress={() => {
+                    onGoogleButtonPress();
+                  }}
+                >
+                  <Ionicons
+                    name="logo-google"
+                    size={24}
+                    color="#fff"
+                    style={styles.socialIcon}
+                  />
+                  <Text style={styles.socialButtonText}>Login with Google</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.socialButton, styles.facebookButton]}
+                  onPress={() => {
+                    /* Add Facebook login logic here */
+                    onFacebookButtonPress();
+                  }}
+                >
+                  <Ionicons
+                    name="logo-facebook"
+                    size={24}
+                    color="#fff"
+                    style={styles.socialIcon}
+                  />
+                  <Text style={styles.socialButtonText}>
+                    Login with Facebook
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          )}
+        </LinearGradient>
+      </KeyboardAvoidingView>
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Reset Password</Text>
+            {isLoading ? (
+              <FootballLoadingIndicator size="small" color="black" />
+            ) : (
+              <>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Email"
+                  placeholderTextColor="#999"
+                  value={email}
+                  onChangeText={(text) => setEmail(text)}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity
+                  style={styles.modalButton}
+                  onPress={handleResetPassword}
+                >
+                  <Text style={styles.modalButtonText}>Reset Password</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalCancelButton]}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <Text style={[styles.modalButtonText, { color: "#4a69bd" }]}>
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
         </View>
-      )}
+      </Modal>
     </ImageBackground>
   );
 };
@@ -207,58 +349,90 @@ const styles = StyleSheet.create({
     flex: 1,
     resizeMode: "cover",
   },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
   container: {
+    flex: 1,
+  },
+  overlay: {
     flex: 1,
     justifyContent: "center",
     padding: 16,
   },
+  content: {
+    alignItems: "center",
+  },
   icon: {
-    width: 100,
-    height: 100,
-    alignSelf: "center",
+    width: 120,
+    height: 120,
     marginBottom: 20,
   },
   title: {
-    fontSize: 28,
+    fontSize: 36,
     fontWeight: "bold",
     color: "#fff",
-    textAlign: "center",
-    marginBottom: 20,
+    marginBottom: 30,
+    textShadowColor: "rgba(0, 0, 0, 0.75)",
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#fff",
+  },
+  inputIcon: {
+    marginRight: 10,
   },
   input: {
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.8)",
-    color: "#333",
+    flex: 1,
+    color: "#fff",
+    fontSize: 16,
+    paddingVertical: 10,
+  },
+  eyeIcon: {
+    padding: 10,
   },
   inputError: {
-    borderColor: "red",
+    borderBottomColor: "#ff6b6b",
   },
   errorText: {
     color: "#ff6b6b",
-    marginBottom: 12,
+    marginBottom: 15,
+    textAlign: "center",
   },
   button: {
     backgroundColor: "#4a69bd",
-    padding: 12,
-    borderRadius: 8,
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 25,
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 15,
+    width: "100%",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   registerButton: {
     backgroundColor: "#60a3bc",
   },
   buttonText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "bold",
+  },
+  forgotPassword: {
+    marginTop: 15,
+  },
+  forgotPasswordText: {
+    color: "#ddd",
+    fontSize: 16,
+    textDecorationLine: "underline",
   },
   modalContainer: {
     flex: 1,
@@ -269,29 +443,33 @@ const styles = StyleSheet.create({
   modalContent: {
     backgroundColor: "#fff",
     padding: 20,
-    borderRadius: 8,
+    borderRadius: 15,
     width: "80%",
+    alignItems: "center",
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 12,
+    marginBottom: 20,
+    color: "#4a69bd",
   },
   modalInput: {
-    marginBottom: 12,
+    width: "100%",
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 8,
     padding: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.8)",
-    color: "#333",
+    fontSize: 16,
   },
   modalButton: {
     backgroundColor: "#4a69bd",
-    padding: 12,
-    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 25,
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 10,
+    width: "100%",
   },
   modalButtonText: {
     color: "#fff",
@@ -299,7 +477,35 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   modalCancelButton: {
-    backgroundColor: "#ccc",
+    backgroundColor: "#f1f2f6",
+  },
+  socialButtonsContainer: {
+    width: "100%",
+    marginTop: 20,
+  },
+  socialButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 25,
+    marginBottom: 10,
+    width: "100%",
+  },
+  googleButton: {
+    backgroundColor: "#DB4437",
+  },
+  facebookButton: {
+    backgroundColor: "#4267B2",
+  },
+  socialIcon: {
+    marginRight: 10,
+  },
+  socialButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
 

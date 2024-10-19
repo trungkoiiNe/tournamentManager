@@ -6,7 +6,7 @@ import Home from "../screens/Home";
 import TournamentDetail from "../screens/TournamentDetail";
 // import TournamentAboutScreen from "../screens/TournamentAbout";
 import TeamDetail from "../screens/TeamDetail";
-import { Notifier, Easing } from 'react-native-notifier';
+// import { Notifier, Easing } from 'react-native-notifier';
 
 // Notifier.showNotification({
 //   title: 'John Doe',

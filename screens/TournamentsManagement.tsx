@@ -20,9 +20,12 @@ export default function TournamentsManagement({
   const [loading, setLoading] = useState(false);
   useEffect(() => {
     setLoading(true);
-    fetchTournaments();
+    async function fetchhandler() {
+      await fetchTournaments();
+    }
+    fetchhandler();
     setLoading(false);
-  }, []);
+  }, [fetchTournaments]);
 
   const handleDeleteTournament = async (id: string) => {
     Alert.alert(
@@ -44,11 +47,18 @@ export default function TournamentsManagement({
       ]
     );
   };
-
+  const defaultUrl =
+    "https://firebasestorage.googleapis.com/v0/b/tournament-manager-d7665.appspot.com/o/noimages.png?alt=media&token=5dd2c160-9ea2-44b9-b913-5aba4f6fc3b8";
   const renderItem = ({ item }: { item: any }) => (
     <View style={styles.tournamentItem}>
-      <Image source={{ uri: item.bannerUrl }} style={styles.banner} />
-      <Image source={{ uri: item.logoUrl }} style={styles.logo} />
+      <Image
+        source={{ uri: item.bannerUrl ? item.bannerUrl : defaultUrl }}
+        style={styles.banner}
+      />
+      <Image
+        source={{ uri: item.logoUrl ? item.logoUrl : defaultUrl }}
+        style={styles.logo}
+      />
       <View style={styles.infoContainer}>
         <Text style={styles.name}>{item.name}</Text>
         <Text style={styles.description}>{item.purpose}</Text>

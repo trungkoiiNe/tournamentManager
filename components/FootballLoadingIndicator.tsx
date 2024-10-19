@@ -33,7 +33,7 @@ const FootballLoadingIndicator = ({
 
   useEffect(() => {
     startAnimations();
-    playWhistleSound();
+    // playWhistleSound();
     setupAccessibility();
 
     const messageInterval = setInterval(() => {
@@ -43,11 +43,11 @@ const FootballLoadingIndicator = ({
     // Clean up function
     return () => {
       clearInterval(messageInterval);
-      if (sound) {
-        sound.stopAsync().then(() => {
-          sound.unloadAsync();
-        });
-      }
+      // if (sound) {
+      //   sound.stopAsync().then(() => {
+      //     sound.unloadAsync();
+      //   });
+      // }
     };
   }, []);
 
@@ -84,27 +84,27 @@ const FootballLoadingIndicator = ({
       ])
     ).start();
   };
-  const playWhistleSound = async () => {
-    try {
-      const { sound } = await Audio.Sound.createAsync(
-        require("../assets/start.mp3")
-      );
-      setSound(sound);
-      await sound.playAsync();
-    } catch (error) {
-      console.log("Error playing sound", error);
-    }
-  };
+  // const playWhistleSound = async () => {
+  //   try {
+  //     const { sound } = await Audio.Sound.createAsync(
+  //       require("../assets/start.mp3")
+  //     );
+  //     setSound(sound);
+  //     await sound.playAsync();
+  //   } catch (error) {
+  //     console.log("Error playing sound", error);
+  //   }
+  // };
   const setupAccessibility = () => {
     AccessibilityInfo.announceForAccessibility("Loading. Please wait.");
   };
-  const stopSound = async () => {
-    if (sound) {
-      await sound.stopAsync();
-      await sound.unloadAsync();
-      setSound(null);
-    }
-  };
+  // const stopSound = async () => {
+  //   if (sound) {
+  //     await sound.stopAsync();
+  //     await sound.unloadAsync();
+  //     setSound(null);
+  //   }
+  // };
 
   return (
     <View style={[styles.container, { backgroundColor }]}>

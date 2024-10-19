@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   Image,
   TextInput,
-
   ActivityIndicator,
 } from "react-native";
 import { useStore } from "../store/store";
@@ -18,38 +17,60 @@ import Icon from "react-native-vector-icons/MaterialIcons";
 import { useAuthStore } from "../store/authStore";
 import { alert, toast } from "@baronha/ting";
 import CustomModal from "../components/CustomModal";
+
 const CoachDashboard = ({ navigation }) => {
-  const { teams, fetchTeamsSpecifiedCoachId, addTeam, uploadTeamImages } =
-    useStore();
-  const { user } = useAuthStore();
-  const coachId = useAuthStore((state) => state.user?.email);
+  const {
+    teams,
+    fetchTeamsSpecifiedCoachId,
+    addTeam,
+    uploadTeamImages,
+    fetchTeams,
+    fetchTeamsSpecifiedPlayerId,
+  } = useStore();
+  // const { user } = useAuthStore();
+  const coachId = useAuthStore((state) => state.user?.email) as string;
+  const role = useAuthStore((state) => state.user?.role) as string;
+  // const user = useAuthStore((state) => state.user);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
   const [newTeamLogo, setNewTeamLogo] = useState<any>(null);
-  const [newTeamBanner , setNewTeamBanner ] = useState<any>(null);
+  const [newTeamBanner, setNewTeamBanner] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isModalJoinVisible, setIsModalJoinVisible] = useState(false);
+
   const handleCloseModal = () => {
     setIsModalVisible(false);
     setNewTeamName("");
     setNewTeamLogo(null);
     setNewTeamBanner(null);
   };
+
+  const handleCloseJoinModal = () => {
+    setIsModalJoinVisible(false);
+  };
+
   const loadTeams = useCallback(async () => {
-    if (coachId) {
+    // console.log(role);
+    if (role === "coach") {
       setLoading(true);
-      console.log(coachId);
-      fetchTeamsSpecifiedCoachId(coachId);
-      // console.log(teams.map((team) => team.teamName));
+      // console.log(coachId);
+      await fetchTeamsSpecifiedCoachId(coachId);
+      setLoading(false);
+    } else if (role === "player") {
+      // console.log(coachId);
+      setLoading(true);
+      await fetchTeamsSpecifiedPlayerId(coachId);
       setLoading(false);
     }
-  }, [coachId, fetchTeamsSpecifiedCoachId]);
+  }, [coachId, fetchTeamsSpecifiedPlayerId, fetchTeamsSpecifiedCoachId]);
 
   useFocusEffect(
     useCallback(() => {
       loadTeams();
     }, [loadTeams])
   );
-  const pickImage = useCallback(async (type) => {
+
+  const pickImage = useCallback(async (type: string) => {
     try {
       const image = await ImagePicker.openPicker({
         width: 300,
@@ -72,6 +93,11 @@ const CoachDashboard = ({ navigation }) => {
     }
   }, []);
 
+  const handleOpenJoinModal = () => {
+    navigation.navigate("JoinTeam");
+    // setIsModalJoinVisible(true);
+  };
+
   const handleCreateTeam = useCallback(async () => {
     if (newTeamName.trim() === "") {
       alert({
@@ -92,7 +118,7 @@ const CoachDashboard = ({ navigation }) => {
 
       const result = await addTeam(newTeam);
 
-      if ( !result.id) {
+      if (!result.id) {
         throw new Error("Failed to create team: No ID returned");
       }
 
@@ -130,6 +156,7 @@ const CoachDashboard = ({ navigation }) => {
     newTeamLogo,
     newTeamBanner,
   ]);
+
   const renderTeamItem = useCallback(
     ({ item }) => (
       <TouchableOpacity
@@ -176,12 +203,20 @@ const CoachDashboard = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>My teams</Text>
-      {user?.role === "coach" && (
+      {role === "coach" && (
         <TouchableOpacity
           style={styles.createButton}
           onPress={() => setIsModalVisible(true)}
         >
           <Icon name="add" size={24} color="white" />
+        </TouchableOpacity>
+      )}
+      {role === "player" && (
+        <TouchableOpacity
+          style={styles.joinButton}
+          onPress={handleOpenJoinModal}
+        >
+          <Text style={styles.joinButtonText}>Don't have a team? Join Now</Text>
         </TouchableOpacity>
       )}
       <FlatList
@@ -260,6 +295,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     elevation: 5,
+  },
+  joinButton: {
+    backgroundColor: "#FF5722",
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 5,
+  },
+  joinButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
   },
   row: {
     justifyContent: "space-between",

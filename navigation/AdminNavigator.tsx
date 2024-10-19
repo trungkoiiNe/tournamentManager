@@ -14,6 +14,7 @@ import ProfileRouter from "../routers/ProfileRouter";
 import TournamentRouter from "../routers/TournamentRouter";
 // import Home from "../screens/Home";
 import HomeRouter from "../routers/HomeRouter";
+import TeamsManagementRouter from "../routers/TeamsManagementRouter";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator(); // Create a StackNavigator instance
@@ -55,10 +56,8 @@ export default function AdminNavigator() {
             headerTitle: "Tournaments",
           }}
         />
-        <Tab.Screen name="Teams" component={TeamsManagement} />
+        <Tab.Screen name="Teams" component={TeamsManagementRouter} />
         <Tab.Screen name="Profile" component={ProfileRouter} />
-
-        {/* <Tab.Screen name="Dashboard" component={PlayerDashboard} /> */}
       </Tab.Navigator>
     </PaperProvider>
   );

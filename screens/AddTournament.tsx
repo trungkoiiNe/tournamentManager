@@ -78,7 +78,7 @@ const AddTournament = ({ navigation }: any) => {
           image
         );
       } catch (error) {
-        console.log("ImagePicker Error: ", error);
+        // console.log("ImagePicker Error: ", error);
         alert({
           title: "Lỗi",
           message: "Không thể chọn ảnh. Vui lòng thử lại.",
@@ -130,7 +130,7 @@ const AddTournament = ({ navigation }: any) => {
       });
       navigation.goBack();
     } catch (error: any) {
-      console.error("Error adding tournament:", error);
+      // console.error("Error adding tournament:", error);
       alert({
         title: "Lỗi",
         message: `Không thể thêm giải đấu: ${error.message}`,
@@ -161,15 +161,6 @@ const AddTournament = ({ navigation }: any) => {
       return newPrizes;
     });
   }, []);
-
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
-        <Text style={styles.loadingText}>Adding Tournament...</Text>
-      </View>
-    );
-  }
   const Card = ({
     children,
     containerStyle,
@@ -179,10 +170,18 @@ const AddTournament = ({ navigation }: any) => {
   }) => {
     return <View style={containerStyle}>{children}</View>;
   };
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+        <Text style={styles.loadingText}>Adding Tournament...</Text>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <ScrollView >
+      <ScrollView>
         <Text style={styles.header}>Add New Tournament</Text>
 
         <TouchableOpacity
@@ -193,7 +192,13 @@ const AddTournament = ({ navigation }: any) => {
         </TouchableOpacity>
         {tournamentData.bannerImage && (
           <Image
-            source={{ uri: tournamentData.bannerImage.path }}
+            source={
+              tournamentData.bannerImage.path
+                ? { uri: tournamentData.bannerImage.path }
+                : {
+                    uri: "https://firebasestorage.googleapis.com/v0/b/tournament-manager-d7665.appspot.com/o/noimages.png?alt=media&token=5dd2c160-9ea2-44b9-b913-5aba4f6fc3b8",
+                  }
+            }
             style={styles.previewImage}
           />
         )}
@@ -206,7 +211,13 @@ const AddTournament = ({ navigation }: any) => {
         </TouchableOpacity>
         {tournamentData.logoImage && (
           <Image
-            source={{ uri: tournamentData.logoImage.path }}
+            source={
+              tournamentData.logoImage.path
+                ? { uri: tournamentData.logoImage.path }
+                : {
+                    uri: "https://firebasestorage.googleapis.com/v0/b/tournament-manager-d7665.appspot.com/o/noimages.png?alt=media&token=5dd2c160-9ea2-44b9-b913-5aba4f6fc3b8",
+                  }
+            }
             style={styles.previewImage}
           />
         )}

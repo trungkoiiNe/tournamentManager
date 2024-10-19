@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, StyleSheet, Animated, ScrollView } from 'react-native';
 
 interface CustomModalProps {
   visible: boolean;
@@ -35,7 +35,7 @@ const CustomModal: React.FC<CustomModalProps> = ({ visible, onClose, title, chil
       <View style={styles.modalContainer}>
         <Animated.View style={[styles.modalContent, { transform: [{ scale: scaleValue }] }]}>
           <Text style={styles.modalTitle}>{title}</Text>
-          {children}
+            {children}
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
@@ -67,6 +67,7 @@ const styles = StyleSheet.create({
     elevation: 5,
     width: '80%',
     maxWidth: 400,
+    maxHeight: '80%', // Set a maximum height for the modal content
   },
   modalTitle: {
     fontSize: 28,
@@ -74,6 +75,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: '#333',
     textAlign: 'center',
+  },
+  scrollViewContent: {
+    width: '100%', // Ensure the ScrollView takes the full width of the modal content
   },
   closeButton: {
     backgroundColor: '#007AFF',

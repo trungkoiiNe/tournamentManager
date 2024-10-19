@@ -20,7 +20,7 @@ const getTabBarIcon =
     } else if (route.name === "Team") {
       iconName = focused ? "account-group" : "account-group-outline";
     } else if (route.name === "Dashboard") {
-      iconName = focused ? "trophy" : "trophy-outline";
+      iconName = focused ? "view-dashboard" : "view-dashboard-outline";
     }
 
     return <Icon name={iconName ?? ""} size={size} color={color} />;
@@ -35,8 +35,10 @@ export default function PlayerNavigator() {
         screenOptions={({ route }) => ({
           tabBarIcon: getTabBarIcon(route),
           headerRight: () => renderNotificationButton(),
-          headerShown: false,
+
+          // headerShown: false,
         })}
+        initialRouteName="Team"
       >
         <Tab.Screen name="Home" component={HomeRouter} />
         <Tab.Screen name="Team" component={TeamRouter} />

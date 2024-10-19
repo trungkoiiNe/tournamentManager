@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import CustomModal from "../components/CustomModal";
 import { FlatList } from "react-native-gesture-handler";
-
 import { alert } from "@baronha/ting";
 import { MaterialIcons } from "@expo/vector-icons";
 import CheckBox from "@react-native-community/checkbox";
@@ -77,7 +76,7 @@ export default function TournamentDetail({
     }
 
     const unsubscribe = fetchRegisteredTeams(tournamentId);
-
+    navigation.setOptions({ title: tournament.name });
     return () => {
       unsubscribe();
     };
@@ -264,7 +263,7 @@ export default function TournamentDetail({
               </View>
             </View>
             <View style={styles.buttonContainer}>
-              {["Schedule", "Teams", "Statistics", "News"].map((item) => (
+              {["Schedule", "Teams"].map((item) => (
                 <TouchableOpacity
                   key={item}
                   style={styles.button}
@@ -285,7 +284,9 @@ export default function TournamentDetail({
           </View>
         );
       case "groups":
-        return <GroupsTable groups={tournament.groups} />;
+        if (tournament.groups) {
+          return <GroupsTable groups={tournament.groups} />;
+        }
       default:
         return null;
     }

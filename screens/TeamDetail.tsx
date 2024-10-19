@@ -10,6 +10,7 @@ import {
   FlatList,
   TextInput,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useStore } from "../store/store";
@@ -27,8 +28,10 @@ export default function TeamDetail({ route, navigation }: any) {
     invitePlayersToTeam,
     fetchTeamMembers,
     fetchTeams,
+    requestJoinTeam,
   } = useStore();
-  const coachId = useAuthStore((state) => state.user?.email);
+  const coachId = useAuthStore((state) => state.user?.email) as string;
+  const role = useAuthStore((state) => state.user?.role) as string;
   const [team, setTeam] = useState(null as any);
   const [teamMembers, setTeamMembers] = useState([] as any);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -36,30 +39,51 @@ export default function TeamDetail({ route, navigation }: any) {
   const [selectedPlayers, setSelectedPlayers] = useState([] as any);
   const [allPlayers, setAllPlayers] = useState([] as any);
   const [loading, setLoading] = useState(true);
+  const kickTeamMember = useStore((state) => state.kickTeamMember);
   const blankImageUrl =
     "https://firebasestorage.googleapis.com/v0/b/tournament-manager-d7665.appspot.com/o/noimages.png?alt=media&token=5dd2c160-9ea2-44b9-b913-5aba4f6fc3b8";
   const loadData = useCallback(async () => {
     setLoading(true);
     await fetchTeams();
+    // console.log(teamId);
     const currentTeam = teams.find((t) => t.id === teamId);
     setTeam(currentTeam);
-    console.log(teams.map((team) => team.teamName));
+    // console.log(currentTeam);
     const [members, players] = await Promise.all([
       fetchTeamMembers(teamId),
       fetchAllPlayers(),
     ]);
-
     setTeamMembers(members);
     setAllPlayers(players);
     setLoading(false);
+    // console.log(team);
   }, [teamId, fetchTeams, fetchTeamMembers, fetchAllPlayers]);
+  async function handleKickPlayer(playerId: string) {
+    Alert.alert("Kick Player", `Are you sure you want to kick ${playerId}?`, [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Kick",
+        onPress: async () => {
+          await kickTeamMember(teamId, playerId);
+          loadData();
+        },
+      },
+    ]);
+  }
   const handleCloseModal = () => {
     setIsModalVisible(false);
     setSelectedPlayers([]);
   };
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    const fetchData = async () => {
+      await loadData();
+    };
+    fetchData();
+    navigation.setOptions({ title: team?.teamName });
+  }, [loadData, team, navigation]);
 
   const filteredPlayers = useMemo(() => {
     return allPlayers.filter(
@@ -77,6 +101,22 @@ export default function TeamDetail({ route, navigation }: any) {
         : [...prev, playerId]
     );
   }, []);
+  const handleRequestJoin = useCallback(async () => {
+    try {
+      await requestJoinTeam(coachId, teamId);
+      alert({
+        title: "Success",
+        message: "Invitations sent successfully",
+        preset: "done",
+      });
+    } catch (error) {
+      alert({
+        title: "Error",
+        message: "Failed to invite players",
+        preset: "error",
+      });
+    }
+  }, [teamId, coachId, requestJoinTeam]);
 
   const handleInvitePlayers = useCallback(async () => {
     try {
@@ -127,15 +167,23 @@ export default function TeamDetail({ route, navigation }: any) {
           style={styles.logo}
         />
         <Text style={styles.name}>{team.teamName}</Text>
-        <Text style={styles.coachName}>Coach: {coachId}</Text>
+        <Text style={styles.coachName}>Coach: {team.coachId}</Text>
       </View>
 
       <View style={styles.membersContainer}>
         <Text style={styles.sectionTitle}>Team Members</Text>
         {teamMembers.map((member: any) => (
-          <Text key={member.id} style={styles.memberItem}>
-            {member.name || "Unknown"} ({member.id || "Unknown"})
-          </Text>
+          <View style={styles.memberRow} key={member.id}>
+            <Text style={styles.memberItem}>
+              {member.name || "Unknown"} ({member.id || "Unknown"})
+            </Text>
+            <TouchableOpacity
+              style={styles.kickButton}
+              onPress={() => handleKickPlayer(member.id)}
+            >
+              <Text style={styles.kickButtonText}>Kick</Text>
+            </TouchableOpacity>
+          </View>
         ))}
       </View>
 
@@ -147,7 +195,13 @@ export default function TeamDetail({ route, navigation }: any) {
           <Text style={styles.inviteButtonText}>Invite Players</Text>
         </TouchableOpacity>
       )}
-
+      {role === "player" && !team.players.includes(coachId) && (
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity style={styles.button} onPress={handleRequestJoin}>
+            <Text style={styles.buttonText}>Request Join {team.teamName}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       <CustomModal
         visible={isModalVisible}
         onClose={handleCloseModal}
@@ -253,15 +307,6 @@ const styles = StyleSheet.create({
     color: "#34495e",
     marginBottom: 15,
   },
-  memberItem: {
-    fontSize: 16,
-    color: "#2c3e50",
-    marginBottom: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: "#ecf0f1",
-    borderRadius: 8,
-  },
   inviteButton: {
     backgroundColor: "#3498db",
     paddingVertical: 12,
@@ -334,5 +379,61 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  button: {
+    backgroundColor: "#007AFF", // iOS blue color, you can change it to any color you prefer
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5, // for Android shadow
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  buttonContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  memberRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  memberItem: {
+    flex: 1,
+    // fontSize: 16,
+    fontSize: 16,
+    color: "#2c3e50",
+    marginBottom: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#ecf0f1",
+    borderRadius: 8,
+  },
+  kickButton: {
+    backgroundColor: "#ff6b6b",
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 5,
+  },
+  kickButtonText: {
+    color: "white",
+    fontWeight: "bold",
   },
 });
